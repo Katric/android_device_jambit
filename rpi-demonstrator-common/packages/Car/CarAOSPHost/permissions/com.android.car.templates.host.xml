@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<permissions>
+    <!-- Rename the package to com.android.car.templates.host -->
+    <privapp-permissions package="com.android.car.templates.host">
+        <!-- To be able to display activities in the cluster -->
+        <permission name="android.car.permission.CAR_DISPLAY_IN_CLUSTER" />
+
+        <!-- To be able to show navigation state (turn by turn directions) in the cluster.-->
+        <permission name="android.car.permission.CAR_NAVIGATION_MANAGER" />
+
+        <!-- To be considered a system-approved host -->
+        <permission name="android.car.permission.TEMPLATE_RENDERER" />
+    </privapp-permissions>
+
+    <!-- Declare support for templated applications. -->
+    <feature name="android.software.car.templates_host" />
+</permissions>
+

@@ -1,0 +1,29 @@
+aidl_interface {
+    name: "jambit.android.hardware.automotive.vehicle.property",
+    vendor_available: true,
+    imports: ["android.hardware.automotive.vehicle.property-V2"],
+    srcs: ["jambit/android/hardware/automotive/vehicle/*.aidl"],
+    stability: "vintf",
+    owner: "richard.kats@jambit.com",
+    backend: {
+        cpp: {
+            enabled: false,
+        },
+        java: {
+            sdk_version: "module_current",
+            min_sdk_version: "31",
+            apex_available: [
+                "//apex_available:platform",
+                "com.android.car.framework",
+            ],
+        },
+    },
+    versions_with_info: [
+        {
+            version: "1",
+            imports: ["android.hardware.automotive.vehicle.property-V2"],
+        },
+    ],
+    frozen: true,
+
+}

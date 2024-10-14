@@ -1,0 +1,31 @@
+cc_binary {
+    name: "android.hardware.automotive.vehicle@V1-default-service-jambit",
+    vendor: true,
+    defaults: [
+        "JambitFakeVehicleHardwareDefaults",
+        "VehicleHalDefaults",
+        "android-automotive-large-parcelable-defaults",
+    ],
+    vintf_fragments: ["jambit-vhal-default-service.xml"],
+    init_rc: ["jambit-vhal-default-service.rc"],
+    relative_install_path: "hw",
+    srcs: ["src/JambitVehicleService.cpp"],
+    static_libs: [
+        "DefaultVehicleHal",
+        "JambitFakeVehicleHardware",
+        "VehicleHalUtils",
+    ],
+    overrides: [
+        "android.hardware.automotive.vehicle@V1-default-service",
+    ],
+    header_libs: [
+        "IVehicleHardware",
+    ],
+    shared_libs: [
+        "libbinder_ndk",
+    ],
+}
+
+/*
+* extend VehicleHalDefaults or the interface deeper !
+*/

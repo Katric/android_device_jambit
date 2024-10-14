@@ -1,0 +1,30 @@
+cc_library {
+       name: "liblgpio",
+       srcs: [
+           "lgCtx.c",
+           "lgDbg.c",
+           "lgErr.c",
+           "lgGpio.c",
+           "lgHdl.c",
+           "lgI2C.c",
+           "lgNotify.c",
+           "lgPthAlerts.c",
+           "lgPthTx.c",
+           "lgSerial.c",
+           "lgSPI.c",
+           "lgThread.c",
+           "lgUtil.c",
+       ],
+       cflags: [
+           "-O3",
+           "-Wall",
+           "-pthread",
+           "-fpic",
+       ],
+       export_include_dirs: ["."],
+       shared_libs: [
+           "libcutils",
+           "libutils",
+       ],
+       vendor: true,
+   }
