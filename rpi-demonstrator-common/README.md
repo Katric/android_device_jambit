@@ -1,0 +1,1 @@
+Common device configuration for the demonstrator. For use in RPi4 and RPi5.

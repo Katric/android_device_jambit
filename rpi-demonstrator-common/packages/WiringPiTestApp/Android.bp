@@ -1,0 +1,13 @@
+cc_binary {
+    name: "wiringpi_test",
+    srcs: ["wiringpi_test.cpp"],
+    shared_libs: ["libwiringPi"],
+    vendor: true,
+}
+
+cc_binary {
+    name: "wiringpi_pwm_test",
+    srcs: ["wiringpi_pwm_test.cpp"],
+    shared_libs: ["libwiringPi"],
+    vendor: true,
+}
