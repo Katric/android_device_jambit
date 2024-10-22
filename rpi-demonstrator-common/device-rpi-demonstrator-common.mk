@@ -14,6 +14,7 @@ PRODUCT_PACKAGES += \
     FakeGPS \
     Jambilight \
 	CarAOSPHost \
+    CarLauncherCustom \
 	# FDroid \
     # SnappMaps \
 
