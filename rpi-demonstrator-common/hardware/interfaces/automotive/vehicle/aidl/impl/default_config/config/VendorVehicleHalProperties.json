@@ -90,7 +90,7 @@
             "property": "VendorVehicleProperty::AMBIENT_LIGHT_COLOR",
             "defaultValue": {
                 "int32Values": [
-                    "VehicleUnit::KILOMETERS_PER_HOUR"
+                    50, 50, 50
                 ]
             },
             "access": "VehiclePropertyAccess::READ_WRITE",
@@ -108,7 +108,7 @@
             "property": "VendorVehicleProperty::AMBIENT_LIGHT_MODE",
             "defaultValue": {
                 "int32Values": [
-                    "AmbientLightMode::BATTERY_LEVEL"
+                    "AmbientLightMode::CUSTOM"
                 ]
             },
             "access": "VehiclePropertyAccess::READ_WRITE",

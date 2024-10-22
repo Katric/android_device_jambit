@@ -346,10 +346,12 @@ void JambitFakeVehicleHardware::init() {
     pinMode(DT_PIN, INPUT);
     wiringPiISR(CLK_PIN, INT_EDGE_RISING, &globalBatteryChangeHandler);
 
-    // start in orange = jambit
+    // start in OFF
     softPwmCreate(RED_PIN, 0, PWM_RANGE);
-    softPwmCreate(GREEN_PIN, 100, PWM_RANGE);
+    softPwmCreate(GREEN_PIN, 0, PWM_RANGE);
     softPwmCreate(BLUE_PIN, 0, PWM_RANGE);
+
+    initAmbientLightColor();
 }
 
 // todo make batterycapacity constant
@@ -427,7 +429,23 @@ void JambitFakeVehicleHardware::handleBatteryChange() {
     mLastInterruptTime = interruptTime;
 }
 
-void JambitFakeVehicleHardware::setAmbientLightColorToBatteryLevel(float batteryPercentage, bool force) {
+std::vector<int32_t> JambitFakeVehicleHardware::getBatteryLevelColor(float batteryPercentage) {
+    constexpr int WARNING_LEVEL = 20;
+    constexpr int CRITICAL_LEVEL = 10;
+    
+    const std::vector<int32_t> COLOR_GOOD   = {0, 100, 0};    // Green
+    const std::vector<int32_t> COLOR_WARN   = {100, 100, 0};  // Yellow
+    const std::vector<int32_t> COLOR_CRITICAL = {100, 0, 0};  // Red
+
+    if (batteryPercentage > WARNING_LEVEL) {
+        return COLOR_GOOD;
+    } else if (batteryPercentage > CRITICAL_LEVEL) {
+        return COLOR_WARN;
+    }
+    return COLOR_CRITICAL;
+}
+
+void JambitFakeVehicleHardware::setAmbientLightColorToBatteryLevel(float batteryPercentage, bool force, bool writeResult) {
     // update LED color depending on battery level percentage. 
     // > 20% = green
     // > 10% = yellow
@@ -438,21 +456,23 @@ void JambitFakeVehicleHardware::setAmbientLightColorToBatteryLevel(float battery
 
     if (ambientLightModeResult.ok()) {
         int32_t ambientLightMode = ambientLightModeResult.value()->value.int32Values[0];
-        if ((ambientLightMode == toInt(AmbientLightMode::BATTERY_LEVEL)) || force) {
-            ALOGD("AMBIENT_LIGHT_MODE is in BATTERY_LEVEL mode. Adjusting color.");
-            if (batteryPercentage > 20) {
-                softPwmWrite(RED_PIN, 0);
-                softPwmWrite(GREEN_PIN, 100);
-                softPwmWrite(BLUE_PIN, 0);
-            } else if (batteryPercentage > 10) {
-                softPwmWrite(RED_PIN, 100);
-                softPwmWrite(GREEN_PIN, 100);
-                softPwmWrite(BLUE_PIN, 0);
-            } else {
-                softPwmWrite(RED_PIN, 100);
-                softPwmWrite(GREEN_PIN, 0);
-                softPwmWrite(BLUE_PIN, 0);
+        std::vector<int32_t> batteryLevelColor = getBatteryLevelColor(batteryPercentage);
+
+        if (force || (ambientLightMode == toInt(AmbientLightMode::BATTERY_LEVEL))) {
+            ALOGD("Adjusting PWM of ambient light color to battery level.");
+            softPwmWrite(RED_PIN, batteryLevelColor[0]);
+            softPwmWrite(GREEN_PIN, batteryLevelColor[1]);
+            softPwmWrite(BLUE_PIN, batteryLevelColor[2]);
+
+            if (writeResult) {
+                auto batteryLevelColorValue = mValuePool->obtain(VehiclePropertyType::INT32_VEC);
+                batteryLevelColorValue->prop = toInt(VendorVehicleProperty::AMBIENT_LIGHT_COLOR);
+                batteryLevelColorValue->areaId = 0;
+                batteryLevelColorValue->timestamp = elapsedRealtimeNano();
+                batteryLevelColorValue->value.int32Values = batteryLevelColor;
+                auto writeResult = mServerSidePropStore->writeValue(std::move(batteryLevelColorValue));
             }
+
             return;
         }
         ALOGI("Tried to set Ambient Light LED color to battery percentage, but Ambient Light Mode is not BATTERY_LEVEL.");
@@ -461,7 +481,7 @@ void JambitFakeVehicleHardware::setAmbientLightColorToBatteryLevel(float battery
     }
 }
 
-void JambitFakeVehicleHardware::setAmbientLightColorToBatteryLevel(bool force) {
+void JambitFakeVehicleHardware::setAmbientLightColorToBatteryLevel(bool force, bool writeResult) {
     auto batteryCapacityResult =
         mServerSidePropStore->readValue(toInt(VehicleProperty::EV_CURRENT_BATTERY_CAPACITY));
     auto currentBatteryLevelResult =
@@ -472,7 +492,7 @@ void JambitFakeVehicleHardware::setAmbientLightColorToBatteryLevel(bool force) {
         float currentBatteryLevel = currentBatteryLevelResult.value()->value.floatValues[0];
         float batteryPercentage = (currentBatteryLevel / batteryCapacity) * 100;
         ALOGD("Battery percentage is %f", batteryPercentage);
-        setAmbientLightColorToBatteryLevel(batteryPercentage, force);
+        setAmbientLightColorToBatteryLevel(batteryPercentage, force, writeResult);
     }
 }
 
@@ -487,6 +507,33 @@ void JambitFakeVehicleHardware::setAmbientLightColor(std::vector<int32_t> rgbVal
             softPwmWrite(GREEN_PIN, rgbValues[1]);
             softPwmWrite(BLUE_PIN, rgbValues[2]);
         }    
+    }
+}
+
+void JambitFakeVehicleHardware::initAmbientLightColor() {
+    auto ambientLightModeResult =
+        mServerSidePropStore->readValue(toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE));
+    // initial color from VendorVehicleHalProperties.json
+    auto ambientLightColorResult = mServerSidePropStore->readValue(toInt(VendorVehicleProperty::AMBIENT_LIGHT_COLOR));
+
+    if (ambientLightModeResult.ok()) {
+        int32_t ambientLightMode = ambientLightModeResult.value()->value.int32Values[0];
+        
+        switch (ambientLightMode) {
+            case toInt(AmbientLightMode::CUSTOM):
+                if (ambientLightColorResult.ok()) {
+                    std::vector<int32_t> initialRgbValues = ambientLightColorResult.value()->value.int32Values;
+                    setAmbientLightColor(initialRgbValues);
+                } else {
+                    ALOGE("Result of AMBIENT_LIGHT_COLOR was not ok during initialization. Falling back to RGB(0, 0, 0)");
+                    setAmbientLightColor({0, 0, 0});
+                }
+                break;
+            case toInt(AmbientLightMode::BATTERY_LEVEL):
+                // force and write back result
+                setAmbientLightColorToBatteryLevel(true, true);
+                break;
+        }
     }
 }
 
