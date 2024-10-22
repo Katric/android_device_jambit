@@ -8,5 +8,5 @@ PRODUCT_DEVICE := rpi5-demonstrator
 PRODUCT_NAME := aosp_demonstrator_rpi5_car
 PRODUCT_BRAND := Raspberry
 PRODUCT_MODEL := Raspberry Pi 5
-PRODUCT_MANUFACTURER := jambit
+PRODUCT_MANUFACTURER := Test
 PRODUCT_RELEASE_NAME := Raspberry Pi 5 Demonstrator

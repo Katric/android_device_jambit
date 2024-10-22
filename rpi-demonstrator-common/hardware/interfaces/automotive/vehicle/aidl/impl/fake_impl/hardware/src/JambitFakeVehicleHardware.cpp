@@ -937,45 +937,33 @@ VhalResult<void> JambitFakeVehicleHardware::maybeSetSpecialValue(const VehiclePr
         return StatusError(StatusCode::NOT_AVAILABLE_DISABLED) << "hvac not available";
     }
 
-    // rework validation e.g. rgbValues must be 3 values, check modes etc and return error
-
     if (propId == toInt(VehicleProperty::HVAC_FAN_SPEED)) {
         auto speedSetting = value.value.int32Values[0];
+        int pwmDutyCycle;
+
         switch (speedSetting) {
             case 1:
-                softPwmWrite(FAN_PWM_PIN, 0);  // Off
-                ALOGI("Fan speed set to 1 (Off). PWM: 0");
+                pwmDutyCycle = 0;  // Off
                 break;
             case 2:
-                softPwmWrite(FAN_PWM_PIN, 70);
-                ALOGI("Fan speed set to 2. PWM: 70");
+                pwmDutyCycle = 70;  // 1
                 break;
             case 3:
-                softPwmWrite(FAN_PWM_PIN, 76);
-                ALOGI("Fan speed set to 3. PWM: 76");
+                pwmDutyCycle = 78;  // 2
                 break;
             case 4:
-                softPwmWrite(FAN_PWM_PIN, 82);
-                ALOGI("Fan speed set to 4. PWM: 82");
+                pwmDutyCycle = 85;  // 3
                 break;
             case 5:
-                softPwmWrite(FAN_PWM_PIN, 88);
-                ALOGI("Fan speed set to 5. PWM: 88");
-                break;
-            case 6:
-                softPwmWrite(FAN_PWM_PIN, 100);
-                ALOGI("Fan speed set to 6 (Max). PWM: 100");
-                break;
-            case 7:
-                softPwmWrite(FAN_PWM_PIN, 100);
-                ALOGI("Fan speed set to 7 (Max). PWM: 100");
+                pwmDutyCycle = 93;  // 4
                 break;
             default:
-                ALOGE("Invalid fan speed: %d. Speed must be between 1 and 6.", speedSetting);
+                pwmDutyCycle = 100;  // 5 and higher (max. 100%)
                 break;
-
-            // default return error ^
         }
+
+        softPwmWrite(FAN_PWM_PIN, pwmDutyCycle);
+        ALOGI("Fan speed set to %d. PWM: %d", speedSetting, pwmDutyCycle);
     }
 
     if (propId == toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE)) {

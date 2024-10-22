@@ -14,8 +14,16 @@ PRODUCT_PACKAGES += \
     FakeGPS \
     Jambilight \
 	CarAOSPHost \
-	# FDroid \
+    #Navigation \
     # SnappMaps \
+	# FDroid \
+    
+
+# System-Apps for testing
+PRODUCT_PACKAGES += \
+    SimpleSystemMonitor \
+    CPUZ \
+   # Geekbench_6 \
 
 # Privileged permissions
 PRODUCT_COPY_FILES += \
