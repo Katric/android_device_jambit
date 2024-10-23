@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Color for highlighting the status icon button that is currently selected. -->
+    <color name="status_icon_selected_button_color">#ef7d00</color>
+
+    <color name="system_bar_icon_color">#FFFFFF</color>
+
+    <!-- colors for hvac temperature view -->
+    <color name="hvac_temperature_decrease_arrow_color">#fef3ec</color>
+    <color name="hvac_temperature_increase_arrow_color">#ef7d00</color>
+
+    <!-- Different colors to indicate different temperature levels. The upper bound for each color
+    is defined in integers.xml (see hvac_temperature_control_levels). -->
+    <string-array name="hvac_temperature_level_backgrounds">
+        <item>#00AFFF</item>
+        <item>#7AA9F6</item>
+        <item>#ef7d00</item>
+        <item>#FFD63F</item>
+        <item>#FF5151</item>
+    </string-array>
+</resources>

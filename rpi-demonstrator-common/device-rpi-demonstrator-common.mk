@@ -15,6 +15,7 @@ PRODUCT_PACKAGES += \
     Jambilight \
 	CarAOSPHost \
     CarLauncherCustom \
+    CarSystemUIOverlay \
 	# FDroid \
     # SnappMaps \
 
