@@ -1,16 +1,24 @@
 package com.android.car.carlauncher.homescreen.assistive;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 
 import com.android.car.carlauncher.R;
 import com.android.car.carlauncher.homescreen.ui.CardContent;
 import com.android.car.carlauncher.homescreen.ui.CardHeader;
 import com.android.car.carlauncher.homescreen.ui.DescriptiveTextView;
 
+import android.util.Log;
+
 public class DemoAppModel implements AssistiveModel {
+
+    private static final String PACKAGE_NAME = "de.jambit.chargingstations";
+    private static final String TAG = "DemoAppModel";
     private CardHeader mCardHeader;
     private DescriptiveTextView mCardContent;
     private OnModelUpdateListener mOnModelUpdateListener;
+    private Intent mIntent;
 
     @Override
     public void onCreate(Context context) {
@@ -21,6 +29,9 @@ public class DemoAppModel implements AssistiveModel {
                 /* title= */ context.getString(R.string.demo_app_main_text),
                 /* subtitle= */ null,
                 /* footer= */ context.getString(R.string.demo_app_footer_text));
+
+        PackageManager packageManager = context.getPackageManager();
+        mIntent = packageManager.getLaunchIntentForPackage(PACKAGE_NAME);
         mOnModelUpdateListener.onModelUpdate(this);
     }
 
@@ -37,5 +48,18 @@ public class DemoAppModel implements AssistiveModel {
     @Override
     public void setOnModelUpdateListener(OnModelUpdateListener onModelUpdateListener) {
         mOnModelUpdateListener = onModelUpdateListener;
+    }
+
+    @Override
+    public Intent getIntent() {
+        if (mIntent == null) {
+            Log.d(TAG, "Intent no found: " + PACKAGE_NAME);
+            Log.i(TAG, "Starting Intent: " + PACKAGE_NAME);
+            mIntent = new Intent(Intent.ACTION_MAIN);
+            mIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+            mIntent.addCategory(Intent.CATEGORY_DEFAULT);
+            mIntent.setPackage(PACKAGE_NAME);
+        }
+        return mIntent;
     }
 }
