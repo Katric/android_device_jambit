@@ -37,7 +37,7 @@
 #include <unordered_map>
 #include <vector>
 
-#define PWM_RANGE 100
+#define PWM_RANGE 255
 #define FAN_PWM_PIN 0
 #define DT_PIN 2
 #define CLK_PIN 3

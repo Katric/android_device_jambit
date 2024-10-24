@@ -50,7 +50,7 @@
 //	Another way to increase the frequency is to reduce the range - however
 //	that reduces the overall output accuracy...
 
-#define	PULSE_TIME	100
+#define	PULSE_TIME	39
 
 static volatile int marks         [MAX_PINS] ;
 static volatile int range         [MAX_PINS] ;

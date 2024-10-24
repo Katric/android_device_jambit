@@ -90,7 +90,7 @@
             "property": "VendorVehicleProperty::AMBIENT_LIGHT_COLOR",
             "defaultValue": {
                 "int32Values": [
-                    50, 50, 50
+                    0, 255, 0
                 ]
             },
             "access": "VehiclePropertyAccess::READ_WRITE",
@@ -100,7 +100,7 @@
                 {
                     "areaId": 0,
                     "minInt32Value": 0,
-                    "maxInt32Value": 100
+                    "maxInt32Value": 0
                 }
             ]
         },
@@ -108,7 +108,7 @@
             "property": "VendorVehicleProperty::AMBIENT_LIGHT_MODE",
             "defaultValue": {
                 "int32Values": [
-                    "AmbientLightMode::CUSTOM"
+                    "AmbientLightMode::BATTERY_LEVEL"
                 ]
             },
             "access": "VehiclePropertyAccess::READ_WRITE",

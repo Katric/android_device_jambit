@@ -339,7 +339,7 @@ void JambitFakeVehicleHardware::init() {
     ALOGI("Setting up wiringPi");
     wiringPiSetup();
 
-    softPwmCreate(FAN_PWM_PIN, 0, PWM_RANGE);
+    softPwmCreate(FAN_PWM_PIN, 0, 100);
 
     // Rotary encoder for battery
     pinMode(CLK_PIN, INPUT);
@@ -433,9 +433,9 @@ std::vector<int32_t> JambitFakeVehicleHardware::getBatteryLevelColor(float batte
     constexpr int WARNING_LEVEL = 20;
     constexpr int CRITICAL_LEVEL = 10;
     
-    const std::vector<int32_t> COLOR_GOOD   = {0, 100, 0};    // Green
-    const std::vector<int32_t> COLOR_WARN   = {100, 100, 0};  // Yellow
-    const std::vector<int32_t> COLOR_CRITICAL = {100, 0, 0};  // Red
+    const std::vector<int32_t> COLOR_GOOD   = {0, 255, 0};    // Green
+    const std::vector<int32_t> COLOR_WARN   = {255, 255, 0};  // Yellow
+    const std::vector<int32_t> COLOR_CRITICAL = {255, 0, 0};  // Red
 
     if (batteryPercentage > WARNING_LEVEL) {
         return COLOR_GOOD;
