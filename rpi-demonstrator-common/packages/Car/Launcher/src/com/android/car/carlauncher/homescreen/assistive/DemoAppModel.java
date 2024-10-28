@@ -56,6 +56,7 @@ public class DemoAppModel implements AssistiveModel {
             Log.d(TAG, "Intent no found: " + PACKAGE_NAME);
             Log.i(TAG, "Starting Intent: " + PACKAGE_NAME);
             mIntent = new Intent(Intent.ACTION_MAIN);
+            mIntent.addCategory(Intent.CATEGORY_DEFAULT);
             mIntent.addCategory(Intent.CATEGORY_LAUNCHER);
             mIntent.setPackage(PACKAGE_NAME);
         }
