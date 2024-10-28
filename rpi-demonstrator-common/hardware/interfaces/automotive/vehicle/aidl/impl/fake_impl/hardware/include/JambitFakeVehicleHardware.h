@@ -125,6 +125,7 @@ class JambitFakeVehicleHardware : public IVehicleHardware {
     void setAmbientLightColorToBatteryLevel(float batteryPercentage, bool force = false /* force set, ignoring AMBIENT_LIGHT_MODE */, bool writeResult = false /* write result to property store */);
     void setAmbientLightColor(std::vector<int32_t> rgbValues);
     std::vector<int32_t> getBatteryLevelColor(float batteryPercentage);
+    void handleSetVendorProperty(const aidl::android::hardware::automotive::vehicle::VehiclePropValue& value);
     
     volatile int mLastInterruptTime = 0;
     static std::function<void()> s_batteryChangeHandler;

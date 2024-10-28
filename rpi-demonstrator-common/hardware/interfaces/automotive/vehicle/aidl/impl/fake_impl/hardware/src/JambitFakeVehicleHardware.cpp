@@ -390,7 +390,7 @@ void JambitFakeVehicleHardware::handleBatteryChange() {
                 auto writeResult = mServerSidePropStore->writeValue(std::move(updatedValue));
                 if (writeResult.ok()) {
                     float batteryPercentage = (newBatteryLevel / batteryCapacity) * 100;
-                    setAmbientLightColorToBatteryLevel(batteryPercentage);
+                    setAmbientLightColorToBatteryLevel(batteryPercentage, false, true);
                     ALOGD("Battery level updated: %.2f%%", batteryPercentage);
 
                     // set FUEL_LOW to true or false
@@ -515,21 +515,25 @@ void JambitFakeVehicleHardware::initAmbientLightColor() {
         mServerSidePropStore->readValue(toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE));
     // initial color from VendorVehicleHalProperties.json
     auto ambientLightColorResult = mServerSidePropStore->readValue(toInt(VendorVehicleProperty::AMBIENT_LIGHT_COLOR));
-
+    ALOGI("initializing ambient light color");
+    ALOGI("initial light mode is %d", ambientLightModeResult.value()->value.int32Values[0]);
     if (ambientLightModeResult.ok()) {
         int32_t ambientLightMode = ambientLightModeResult.value()->value.int32Values[0];
         
         switch (ambientLightMode) {
             case toInt(AmbientLightMode::CUSTOM):
+                ALOGI("Mode is CUSTOM");
                 if (ambientLightColorResult.ok()) {
                     std::vector<int32_t> initialRgbValues = ambientLightColorResult.value()->value.int32Values;
                     setAmbientLightColor(initialRgbValues);
+                    ALOGI("Setting initial color");
                 } else {
                     ALOGE("Result of AMBIENT_LIGHT_COLOR was not ok during initialization. Falling back to RGB(0, 0, 0)");
                     setAmbientLightColor({0, 0, 0});
                 }
                 break;
             case toInt(AmbientLightMode::BATTERY_LEVEL):
+                ALOGI("Mode is BATTERY_LEVEL");
                 // force and write back result
                 setAmbientLightColorToBatteryLevel(true, true);
                 break;
@@ -984,67 +988,6 @@ VhalResult<void> JambitFakeVehicleHardware::maybeSetSpecialValue(const VehiclePr
         return StatusError(StatusCode::NOT_AVAILABLE_DISABLED) << "hvac not available";
     }
 
-    // rework validation e.g. rgbValues must be 3 values, check modes etc and return error
-
-    if (propId == toInt(VehicleProperty::HVAC_FAN_SPEED)) {
-        auto speedSetting = value.value.int32Values[0];
-        switch (speedSetting) {
-            case 1:
-                softPwmWrite(FAN_PWM_PIN, 0);  // Off
-                ALOGI("Fan speed set to 1 (Off). PWM: 0");
-                break;
-            case 2:
-                softPwmWrite(FAN_PWM_PIN, 70);
-                ALOGI("Fan speed set to 2. PWM: 70");
-                break;
-            case 3:
-                softPwmWrite(FAN_PWM_PIN, 76);
-                ALOGI("Fan speed set to 3. PWM: 76");
-                break;
-            case 4:
-                softPwmWrite(FAN_PWM_PIN, 82);
-                ALOGI("Fan speed set to 4. PWM: 82");
-                break;
-            case 5:
-                softPwmWrite(FAN_PWM_PIN, 88);
-                ALOGI("Fan speed set to 5. PWM: 88");
-                break;
-            case 6:
-                softPwmWrite(FAN_PWM_PIN, 100);
-                ALOGI("Fan speed set to 6 (Max). PWM: 100");
-                break;
-            case 7:
-                softPwmWrite(FAN_PWM_PIN, 100);
-                ALOGI("Fan speed set to 7 (Max). PWM: 100");
-                break;
-            default:
-                ALOGE("Invalid fan speed: %d. Speed must be between 1 and 6.", speedSetting);
-                break;
-
-            // default return error ^
-        }
-    }
-
-    if (propId == toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE)) {
-        int32_t ambientLightMode = value.value.int32Values[0];
-        ALOGI("Got request to change AMBIENT_LIGHT_MODE to %d", ambientLightMode);
-        if (ambientLightMode == toInt(AmbientLightMode::BATTERY_LEVEL)) {
-            ALOGD("AMBIENT_LIGHT_MODE is in BATTERY_LEVEL mode");
-            setAmbientLightColorToBatteryLevel(true /* force, because AMBIENT_LIGHT_MODE will be updated after this */);
-        }
-    }
-
-    if (propId == toInt(VendorVehicleProperty::AMBIENT_LIGHT_COLOR)) {
-        auto ambientLightModeResult =
-                mServerSidePropStore->readValue(toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE));
-
-        if (ambientLightModeResult.ok() && ambientLightModeResult.value()->value.int32Values[0] == toInt(AmbientLightMode::CUSTOM)) {
-            std::vector<int32_t> rgbValues = value.value.int32Values;
-            // return error if not 3 values
-            setAmbientLightColor(rgbValues);
-        } // return error if not in CUSTOM mode
-    }
-
     if (mAdasEnabledPropToAdasPropWithErrorState.count(propId) &&
         value.value.int32Values.size() == 1) {
         if (value.value.int32Values[0] == 1) {
@@ -1128,6 +1071,69 @@ VhalResult<void> JambitFakeVehicleHardware::maybeSetSpecialValue(const VehiclePr
     return {};
 }
 
+void JambitFakeVehicleHardware::handleSetVendorProperty(const VehiclePropValue& value) {
+    ATRACE_BEGIN("JambitFakeVehicleHardware:handleSetVendorProperty");
+    int32_t propId = value.prop;
+
+    // rework validation e.g. rgbValues must be 3 values, check modes etc and return error
+
+    if (propId == toInt(VehicleProperty::HVAC_FAN_SPEED)) {
+        auto speedSetting = value.value.int32Values[0];
+        switch (speedSetting) {
+            case 1:
+                softPwmWrite(FAN_PWM_PIN, 0);  // Off
+                ALOGI("Fan speed set to 1 (Off). PWM: 0");
+                break;
+            case 2:
+                softPwmWrite(FAN_PWM_PIN, 70);
+                ALOGI("Fan speed set to 2. PWM: 70");
+                break;
+            case 3:
+                softPwmWrite(FAN_PWM_PIN, 76);
+                ALOGI("Fan speed set to 3. PWM: 76");
+                break;
+            case 4:
+                softPwmWrite(FAN_PWM_PIN, 82);
+                ALOGI("Fan speed set to 4. PWM: 82");
+                break;
+            case 5:
+                softPwmWrite(FAN_PWM_PIN, 88);
+                ALOGI("Fan speed set to 5. PWM: 88");
+                break;
+            case 6:
+                softPwmWrite(FAN_PWM_PIN, 100);
+                ALOGI("Fan speed set to 6 (Max). PWM: 100");
+                break;
+            case 7:
+                softPwmWrite(FAN_PWM_PIN, 100);
+                ALOGI("Fan speed set to 7 (Max). PWM: 100");
+                break;
+            default:
+                ALOGE("Invalid fan speed: %d. Speed must be between 1 and 6.", speedSetting);
+                break;
+
+            // default return error ^
+        }
+    }
+
+    if (propId == toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE)) {
+        int32_t ambientLightMode = value.value.int32Values[0];
+        ALOGI("Got request to change AMBIENT_LIGHT_MODE to %d", ambientLightMode);
+        if (ambientLightMode == toInt(AmbientLightMode::BATTERY_LEVEL)) {
+            ALOGD("AMBIENT_LIGHT_MODE is in BATTERY_LEVEL mode");
+            setAmbientLightColorToBatteryLevel(true /* force, because AMBIENT_LIGHT_MODE will be updated after this */, true);
+        }
+    }
+
+    if (propId == toInt(VendorVehicleProperty::AMBIENT_LIGHT_COLOR)) {
+        std::vector<int32_t> rgbValues = value.value.int32Values;
+        // return error if not 3 values
+        setAmbientLightColor(rgbValues);
+    }
+
+    ATRACE_END();
+}
+
 StatusCode JambitFakeVehicleHardware::setValues(std::shared_ptr<const SetValuesCallback> callback,
                                           const std::vector<SetValueRequest>& requests) {
     for (auto& request : requests) {
@@ -1149,6 +1155,7 @@ VhalResult<void> JambitFakeVehicleHardware::setValue(const VehiclePropValue& val
     // In a real VHAL implementation, this will send the request to vehicle bus if not already
     // sent in setValues, and wait for the response from vehicle bus.
     // Here we are just updating mValuePool.
+    ATRACE_BEGIN("JambitFakeVehicleHardware:setValue");
     ALOGI("Setting value for property ID: 0x%X, value: %s", value.prop, value.toString().c_str());
     bool isSpecialValue = false;
     auto setSpecialValueResult = maybeSetSpecialValue(value, &isSpecialValue);
@@ -1172,6 +1179,10 @@ VhalResult<void> JambitFakeVehicleHardware::setValue(const VehiclePropValue& val
                                getErrorMsg(writeResult).c_str());
     }
 
+    // handle Vendor Properties (set PWM, ...)
+    handleSetVendorProperty(value);
+
+    ATRACE_END();
     return {};
 }
 

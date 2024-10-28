@@ -90,7 +90,7 @@
             "property": "VendorVehicleProperty::AMBIENT_LIGHT_COLOR",
             "defaultValue": {
                 "int32Values": [
-                    0, 255, 0
+                    0, 0, 255
                 ]
             },
             "access": "VehiclePropertyAccess::READ_WRITE",
@@ -100,7 +100,7 @@
                 {
                     "areaId": 0,
                     "minInt32Value": 0,
-                    "maxInt32Value": 0
+                    "maxInt32Value": 255
                 }
             ]
         },
