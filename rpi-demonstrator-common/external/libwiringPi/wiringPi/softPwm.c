@@ -150,6 +150,7 @@ int softPwmCreate (int pin, int initialValue, int pwmRange)
   digitalWrite (pin, LOW) ;
   pinMode      (pin, OUTPUT) ;
 
+  stopFlag[pin] = 0;
   marks [pin] = initialValue ;
   range [pin] = pwmRange ;
 
