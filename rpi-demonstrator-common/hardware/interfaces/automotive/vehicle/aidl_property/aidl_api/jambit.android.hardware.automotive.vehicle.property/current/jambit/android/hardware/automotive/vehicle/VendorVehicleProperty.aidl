@@ -19,6 +19,6 @@
 package jambit.android.hardware.automotive.vehicle;
 @Backing(type="int") @VintfStability
 enum VendorVehicleProperty {
-  AMBIENT_LIGHT_COLOR = (((0x4000 + android.hardware.automotive.vehicle.VehiclePropertyGroup.VENDOR) + android.hardware.automotive.vehicle.VehicleArea.GLOBAL) + android.hardware.automotive.vehicle.VehiclePropertyType.INT32_VEC) /* 557924352 */,
-  AMBIENT_LIGHT_MODE = (((0x4001 + android.hardware.automotive.vehicle.VehiclePropertyGroup.VENDOR) + android.hardware.automotive.vehicle.VehicleArea.GLOBAL) + android.hardware.automotive.vehicle.VehiclePropertyType.INT32) /* 557858817 */,
+  AMBIENT_LIGHT_COLOR = (((0x6000 + android.hardware.automotive.vehicle.VehiclePropertyGroup.VENDOR) + android.hardware.automotive.vehicle.VehicleArea.GLOBAL) + android.hardware.automotive.vehicle.VehiclePropertyType.INT32_VEC) /* 557932544 */,
+  AMBIENT_LIGHT_MODE = (((0x6001 + android.hardware.automotive.vehicle.VehiclePropertyGroup.VENDOR) + android.hardware.automotive.vehicle.VehicleArea.GLOBAL) + android.hardware.automotive.vehicle.VehiclePropertyType.INT32) /* 557867009 */,
 }

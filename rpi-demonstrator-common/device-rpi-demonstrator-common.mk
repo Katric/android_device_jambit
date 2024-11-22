@@ -3,7 +3,7 @@ COMMON_PATH := device/jambit/rpi-demonstrator-common
 # Vehicle
 PRODUCT_PACKAGES += android.hardware.automotive.vehicle@V1-default-service-jambit \
 # for overriding default vhal properties in FakeVehicleHardware
-PRODUCT_PROPERTY_OVERRIDES += persist.vendor.vhal_init_value_override=true \
+#PRODUCT_PROPERTY_OVERRIDES += persist.vendor.vhal_init_value_override=true \
 
 # Keyboard
 PRODUCT_PACKAGES += \

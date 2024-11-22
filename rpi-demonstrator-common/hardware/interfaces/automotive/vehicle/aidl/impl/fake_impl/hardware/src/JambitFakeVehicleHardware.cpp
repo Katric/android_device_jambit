@@ -378,6 +378,9 @@ void JambitFakeVehicleHardware::handleBatteryChange() {
             } else {
                 newBatteryLevel = std::max(currentBatteryLevel - 0.02f * batteryCapacity, 0.0f);
             }
+            
+            std::string traceName = "JambitFakeVehicleHardware:handleBatteryChange/" + std::to_string(newBatteryLevel);
+            ATRACE_BEGIN(traceName.c_str());
 
             // if battery value is different, store it
             if (newBatteryLevel != currentBatteryLevel) {
@@ -422,6 +425,7 @@ void JambitFakeVehicleHardware::handleBatteryChange() {
                           writeResult.error().message().c_str());
                 }
             }
+            ATRACE_END();
         } else {
             ALOGE("Failed to read battery capacity or level");
         }
@@ -503,9 +507,11 @@ void JambitFakeVehicleHardware::setAmbientLightColor(std::vector<int32_t> rgbVal
     if (ambientLightModeResult.ok()) {
         int32_t ambientLightMode = ambientLightModeResult.value()->value.int32Values[0];
         if (ambientLightMode == toInt(AmbientLightMode::CUSTOM)) {
+            ATRACE_BEGIN("JambitFakeVehicleHardware:setCustomAmbientLightColor");
             softPwmWrite(RED_PIN, rgbValues[0]);
             softPwmWrite(GREEN_PIN, rgbValues[1]);
             softPwmWrite(BLUE_PIN, rgbValues[2]);
+            ATRACE_END();
         }    
     }
 }
@@ -513,7 +519,7 @@ void JambitFakeVehicleHardware::setAmbientLightColor(std::vector<int32_t> rgbVal
 void JambitFakeVehicleHardware::initAmbientLightColor() {
     auto ambientLightModeResult =
         mServerSidePropStore->readValue(toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE));
-    // initial color from VendorVehicleHalProperties.json
+    // initial color from DemonstratorVehicleHalProperties.json
     auto ambientLightColorResult = mServerSidePropStore->readValue(toInt(VendorVehicleProperty::AMBIENT_LIGHT_COLOR));
     ALOGI("initializing ambient light color");
     ALOGI("initial light mode is %d", ambientLightModeResult.value()->value.int32Values[0]);

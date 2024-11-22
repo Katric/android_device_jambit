@@ -22,7 +22,7 @@
 #include <FakeUserHal.h>
 #include <GeneratorHub.h>
 #include <IVehicleHardware.h>
-#include <JsonConfigLoader.h>
+#include <DemonstratorJsonConfigLoader.h>
 #include <RecurrentTimer.h>
 #include <VehicleHalTypes.h>
 #include <VehiclePropertyStore.h>
@@ -67,7 +67,6 @@ class JambitFakeVehicleHardware : public IVehicleHardware {
     ~JambitFakeVehicleHardware();
 
     void handleBatteryChange();
-    static void batteryChangeISR();
 
     // Get all the property configs.
     std::vector<aidl::android::hardware::automotive::vehicle::VehiclePropConfig>
@@ -186,7 +185,7 @@ class JambitFakeVehicleHardware : public IVehicleHardware {
     bool mAddExtraTestVendorConfigs;
 
     // Only used during initialization.
-    JsonConfigLoader mLoader;
+    DemonstratorJsonConfigLoader mLoader;
 
     void init();
     // Stores the initial value to property store.

@@ -17,14 +17,14 @@
 #define LOG_TAG "JambitVehicleService"
 
 #include <DefaultVehicleHal.h>
-#include <JambitFakeVehicleHardware.h>
+#include <GpioFakeVehicleHardware.h>
 
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
 #include <utils/Log.h>
 
 using ::android::hardware::automotive::vehicle::DefaultVehicleHal;
-using ::android::hardware::automotive::vehicle::fake::JambitFakeVehicleHardware;
+using ::android::hardware::automotive::vehicle::fake::GpioFakeVehicleHardware;
 
 int main(int /* argc */, char* /* argv */[]) {
     ALOGI("Starting thread pool...");
@@ -34,7 +34,7 @@ int main(int /* argc */, char* /* argv */[]) {
     }
     ABinderProcess_startThreadPool();
 
-    std::unique_ptr<JambitFakeVehicleHardware> hardware = std::make_unique<JambitFakeVehicleHardware>();
+    std::unique_ptr<GpioFakeVehicleHardware> hardware = std::make_unique<GpioFakeVehicleHardware>();
     std::shared_ptr<DefaultVehicleHal> vhal =
             ::ndk::SharedRefBase::make<DefaultVehicleHal>(std::move(hardware));
 

@@ -1,0 +1,32 @@
+cc_library {
+    name: "GpioFakeVehicleHardware",
+    vendor: true,
+    srcs: ["src/*.cpp"],
+    local_include_dirs: ["include"],
+    export_include_dirs: ["include"],
+    static_libs: [
+        "VehicleHalUtils",
+    ],
+    defaults: [
+        "VehicleHalDefaults",
+        "GpioFakeVehicleHardwareDefaults",
+    ],
+}
+
+cc_defaults {
+    name : "GpioFakeVehicleHardwareDefaults",
+    required: [
+        "Prebuilt_DemonstratorVehicleHalProperties_JSON",
+    ],
+    defaults : [
+        "FakeVehicleHardwareDefaults",
+    ],
+    static_libs : [
+        "FakeVehicleHardware",
+        "VehicleHalJsonConfigLoader",
+        "DemonstratorVehicleHalJsonConfigLoader",
+    ],
+    shared_libs: [
+        "libwiringPi",
+    ],
+}
