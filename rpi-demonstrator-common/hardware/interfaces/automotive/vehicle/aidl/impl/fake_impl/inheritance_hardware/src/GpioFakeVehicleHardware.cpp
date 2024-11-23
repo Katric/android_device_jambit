@@ -12,6 +12,9 @@
 #include <VehicleHalTypes.h>
 #include <VehicleUtils.h>
 
+#include <aidl/jambit/android/hardware/automotive/vehicle/AmbientLightMode.h>
+#include <aidl/jambit/android/hardware/automotive/vehicle/VendorVehicleProperty.h>
+
 #include <softPwm.h>
 #include <wiringPi.h>
 
@@ -57,6 +60,9 @@ namespace android {
                         using ::aidl::android::hardware::automotive::vehicle::VehiclePropValue;
                         using ::aidl::android::hardware::automotive::vehicle::VehicleUnit;
 
+                        using ::aidl::jambit::android::hardware::automotive::vehicle::VendorVehicleProperty;
+                        using ::aidl::jambit::android::hardware::automotive::vehicle::AmbientLightMode;
+
                         using ::android::base::EqualsIgnoreCase;
                         using ::android::base::Error;
                         using ::android::base::GetIntProperty;
@@ -72,41 +78,70 @@ namespace android {
 
                     // a bit ugly, but it's not possible to pass a member function to wiringPiISR.
                     // This is a workaround together with gGpioFakeVehicleHardware.
-                    //GpioFakeVehicleHardware* gGpioFakeVehicleHardware = nullptr;
-                    //
-                    //void globalBatteryChangeHandler() {
-                    //    if (gGpioFakeVehicleHardware != nullptr) {
-                    //        gGpioFakeVehicleHardware->handleBatteryChange();
-                    //    }
-                    //}
+                    GpioFakeVehicleHardware *gGpioFakeVehicleHardware = nullptr;
+
+                    void globalBatteryChangeHandler() {
+                        if (gGpioFakeVehicleHardware != nullptr) {
+                            gGpioFakeVehicleHardware->handleBatteryChange();
+                        }
+                    }
 
                     GpioFakeVehicleHardware::GpioFakeVehicleHardware()
-                            : FakeVehicleHardware()//, mPendingSetValueRequests(this)
-                            {
+                            : FakeVehicleHardware(), mPendingSetValueRequests(this) {
                         init();
                     }
 
-                    // FakeVehicleHardware destructor is called automatically
                     GpioFakeVehicleHardware::~GpioFakeVehicleHardware() {
-
+                        mPendingSetValueRequests.stop();
                     }
 
                     StatusCode GpioFakeVehicleHardware::setValues(
                             std::shared_ptr<const SetValuesCallback> callback,
                             const std::vector<SetValueRequest> &requests) {
-                        return FakeVehicleHardware::setValues(callback, requests);
+                        for (auto &request: requests) {
+                            ALOGD("New setValue request");
+                            mPendingSetValueRequests.addRequest(request, callback);
+                        }
+
+                        return StatusCode::OK;
                     }
 
                     void GpioFakeVehicleHardware::init() {
-                        ALOGI("XXXXX Called GpioFakeVehicleHardware init");
                         std::unordered_map<int32_t, ConfigDeclaration> configsByPropId;
                         loadPropConfigsFromDir(VENDOR_PROPERTY_CONFIG_DIR, &configsByPropId);
+
+                        initGpio();
 
                         for (auto &[_, configDeclaration]: configsByPropId) {
                             VehiclePropConfig cfg = configDeclaration.config;
                             mServerSidePropStore->registerProperty(cfg, nullptr);
-                            storePropInitialValue(configDeclaration);
+                            setUpAndStorePropInitialValue(configDeclaration);
                         }
+
+                        // for rotary encoder
+                        gGpioFakeVehicleHardware = this;
+                    }
+
+                    void GpioFakeVehicleHardware::initGpio() {
+                        ALOGI("Setting up wiringPi");
+                        int32_t wiringPiStatus = wiringPiSetup();
+
+                        if (wiringPiStatus != 0) {
+                            ALOGE("Error while initializing wiringPi");
+                        }
+
+                        // PWM for fan
+                        softPwmCreate(FAN_PWM_PIN, 0, 100);
+
+                        // PWM for RGB LEDs
+                        softPwmCreate(RED_PIN, 0, PWM_RANGE);
+                        softPwmCreate(GREEN_PIN, 0, PWM_RANGE);
+                        softPwmCreate(BLUE_PIN, 0, PWM_RANGE);
+
+                        // rotary encoder for battery level setting
+                        pinMode(CLK_PIN, INPUT);
+                        pinMode(DT_PIN, INPUT);
+                        wiringPiISR(CLK_PIN, INT_EDGE_RISING, &globalBatteryChangeHandler);
                     }
 
                     void GpioFakeVehicleHardware::loadPropConfigsFromDir(const std::string &dirPath,
@@ -135,7 +170,7 @@ namespace android {
                         }
                     }
 
-                    void GpioFakeVehicleHardware::storePropInitialValue(
+                    void GpioFakeVehicleHardware::setUpAndStorePropInitialValue(
                             const ConfigDeclaration &config) {
                         const VehiclePropConfig &vehiclePropConfig = config.config;
                         int propId = vehiclePropConfig.prop;
@@ -170,14 +205,362 @@ namespace android {
                                 continue;
                             }
 
+                            VehiclePropValuePool::RecyclableType updatedValue = mValuePool->obtain(
+                                    prop);
                             auto result =
                                     mServerSidePropStore->writeValue(
-                                            mValuePool->obtain(prop), /*updateStatus=*/true);
+                                            std::move(updatedValue), /*updateStatus=*/true);
+
                             if (!result.ok()) {
                                 ALOGE("failed to write default config value, error: %s, status: %d",
                                       getErrorMsg(result).c_str(), getIntErrorCode(result));
                             }
+
+                            // initialize special demonstrator gpio values
+                            bool isSpecialDemonstratorValue = false;
+                            auto maybeSetSpecialDemonstratorValueResult = maybeSetSpecialDemonstratorValue(
+                                    prop, &isSpecialDemonstratorValue);
+
+                            if (isSpecialDemonstratorValue &&
+                                !maybeSetSpecialDemonstratorValueResult.ok()) {
+                                ALOGE("failed to initialize GPIO for property 0x%x, error: %s",
+                                      prop.prop,
+                                      getErrorMsg(maybeSetSpecialDemonstratorValueResult).c_str());
+                            }
                         }
+                    }
+
+                    aidl::android::hardware::automotive::vehicle::SetValueResult
+                    GpioFakeVehicleHardware::handleSetValueRequest(const SetValueRequest &request) {
+                        SetValueResult setValueResult;
+                        setValueResult.requestId = request.requestId;
+
+                        if (auto result = setValue(request.value); !result.ok()) {
+                            ALOGE("failed to set value, error: %s, code: %d",
+                                  getErrorMsg(result).c_str(),
+                                  getIntErrorCode(result));
+                            setValueResult.status = getErrorCode(result);
+                        } else {
+                            setValueResult.status = StatusCode::OK;
+                        }
+
+                        return setValueResult;
+                    }
+
+                    // if boolean is false (= not a relevant property for the demonstrator),
+                    // then call FakeVehicleHardware::setValue
+                    VhalResult<void>
+                    GpioFakeVehicleHardware::setValue(const VehiclePropValue &value) {
+                        ALOGI("New setValueRequest for property id %d", value.prop);
+                        bool isSpecialDemonstratorValue = false;
+                        auto setSpecialDemonstratorValue = maybeSetSpecialDemonstratorValue(value,
+                                                                                            &isSpecialDemonstratorValue);
+
+                        // not a special demonstrator value => handle with standard fake VHAL
+                        if (!isSpecialDemonstratorValue) {
+                            ALOGI("Value %d is not a special demonstrator value and will be handled by FakeVehicleHardware",
+                                  value.prop);
+                            return FakeVehicleHardware::setValue(value);
+                        }
+
+                        if (isSpecialDemonstratorValue && !setSpecialDemonstratorValue.ok()) {
+                            ALOGI("Special demonstrator value not ok");
+                            return StatusError(getErrorCode(setSpecialDemonstratorValue))
+                                    << StringPrintf(
+                                            "failed to set special demonstrator value for property ID: %d, error: %s",
+                                            value.prop,
+                                            getErrorMsg(setSpecialDemonstratorValue).c_str());
+                        }
+
+                        auto updatedSpecialDemonstratorValue = mValuePool->obtain(value);
+                        int64_t timestamp = elapsedRealtimeNano();
+                        updatedSpecialDemonstratorValue->timestamp = timestamp;
+
+                        auto writeResult = mServerSidePropStore->writeValue(
+                                std::move(updatedSpecialDemonstratorValue));
+                        if (!writeResult.ok()) {
+                            return StatusError(getErrorCode(writeResult))
+                                    << StringPrintf(
+                                            "failed to write special demonstrator value into property store, error: %s",
+                                            getErrorMsg(writeResult).c_str());
+                        }
+
+                        return {};
+                    }
+
+                    VhalResult<void>
+                    GpioFakeVehicleHardware::maybeSetSpecialDemonstratorValue(
+                            const VehiclePropValue &value,
+                            bool *isSpecialDemonstratorValue) {
+                        *isSpecialDemonstratorValue = false;
+                        int32_t propId = value.prop;
+
+                        if (propId == toInt(VendorVehicleProperty::AMBIENT_LIGHT_COLOR)) {
+                            ALOGD("setValue Request for AMBIENT_LIGHT_COLOR");
+                            *isSpecialDemonstratorValue = true;
+                            return handleSetCustomAmbientLightColor(value);
+                        }
+
+                        if (propId == toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE)) {
+                            ALOGD("setValue Request for AMBIENT_LIGHT_MODE");
+                            *isSpecialDemonstratorValue = true;
+                            return handleSetAmbientLightMode(value);
+                        }
+
+                        if (propId == toInt(VehicleProperty::HVAC_FAN_SPEED)) {
+                            ALOGD("setValue Request for HVAC_FAN_SPEED");
+                            *isSpecialDemonstratorValue = true;
+                            return handleSetHvacFanSpeed(value);
+                        }
+
+                        return {};
+                    }
+
+                    void GpioFakeVehicleHardware::handleBatteryChange() {
+
+                    }
+
+                    VhalResult<void>
+                    GpioFakeVehicleHardware::handleSetHvacFanSpeed(const VehiclePropValue &value) {
+                        int32_t propId = value.prop;
+
+                        if (propId != toInt(VehicleProperty::HVAC_FAN_SPEED)) {
+                            return StatusError(StatusCode::INVALID_ARG)
+                                    << StringPrintf(
+                                            "Invalid property ID: 0x%x, expected HVAC_FAN_SPEED",
+                                            propId);
+                        }
+
+                        if (value.value.int32Values.empty()) {
+                            return StatusError(StatusCode::INVALID_ARG)
+                                    << "No fan speed value provided";
+                        }
+
+                        int32_t hvacFanSpeedLevel = value.value.int32Values[0];
+                        return setPwmHvacFanSpeed(hvacFanSpeedLevel);
+                    }
+
+                    VhalResult<void>
+                    GpioFakeVehicleHardware::setPwmHvacFanSpeed(int32_t hvacFanSpeedLevel) {
+                        const int pwmDutyCycleValues[] = {0, 70, 77, 85, 92, 100};
+                        const int32_t hvacFanSpeedIdx = hvacFanSpeedLevel - 1;
+
+                        if (hvacFanSpeedIdx < 0 || hvacFanSpeedIdx > 5) {
+                            ALOGE("Invalid fan speed: %d. Speed must be between 1 and 6.",
+                                  hvacFanSpeedLevel);
+                            return StatusError(StatusCode::INVALID_ARG)
+                                    << StringPrintf(
+                                            "Invalid fan speed: %d. Speed must be between 1 and 6.",
+                                            hvacFanSpeedLevel);
+                        }
+
+                        softPwmWrite(FAN_PWM_PIN, pwmDutyCycleValues[hvacFanSpeedIdx]);
+                        ALOGI("Fan speed set to %d. PWM: %d", hvacFanSpeedLevel,
+                              pwmDutyCycleValues[hvacFanSpeedIdx]);
+                        return {};
+                    }
+
+                    VhalResult<void> GpioFakeVehicleHardware::handleSetAmbientLightMode(
+                            const VehiclePropValue &value) {
+                        int32_t propId = value.prop;
+
+                        if (propId != toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE)) {
+                            ALOGE("handleSetAmbientLightMode: Property is not AMBIENT_LIGHT_MODE");
+                            return StatusError(StatusCode::INVALID_ARG)
+                                    << StringPrintf(
+                                            "Invalid property ID: 0x%x, expected AMBIENT_LIGHT_MODE",
+                                            propId);
+                        }
+
+                        if (value.value.int32Values.empty()) {
+                            ALOGE("handleSetAmbientLightMode: invalid argument");
+                            return StatusError(StatusCode::INVALID_ARG)
+                                    << "No ambient light mode value provided";
+                        }
+
+                        int32_t ambientLightModeValue = value.value.int32Values[0];
+
+                        if (ambientLightModeValue == toInt(AmbientLightMode::CUSTOM)) {
+                            ALOGD("handleSetAmbientLightMode: AmbientLightMode is CUSTOM");
+                            // no special action required
+                            return {};
+                        } else if (ambientLightModeValue ==
+                                   toInt(AmbientLightMode::BATTERY_LEVEL)) {
+                            ALOGD("handleSetAmbientLightMode: AmbientLightMode is BATTERY_LEVEL");
+                            // set color to current battery level
+                            auto batteryLevelResult = calculateCurrentBatteryLevelPercent();
+                            if (!batteryLevelResult.ok()) {
+                                return StatusError(getErrorCode(batteryLevelResult))
+                                        << getErrorMsg(batteryLevelResult);
+                            }
+                            return setPwmAmbientLightColorToBatteryLevel(
+                                    batteryLevelResult.value());
+                        }
+
+                        return StatusError(StatusCode::INVALID_ARG)
+                                << StringPrintf("Invalid ambient light mode value: %d",
+                                                ambientLightModeValue);
+                    }
+
+                    VhalResult<void>
+                    GpioFakeVehicleHardware::setPwmAmbientLightColor(int32_t red, int32_t green,
+                                                                     int32_t blue) {
+                        if (red < 0 || red > 255 || green < 0 || green > 255 || blue < 0 ||
+                            blue > 255) {
+                            ALOGE("setPwmAmbientLightColor: Invalid color values: red: %d green: %d blue: %d",
+                                  red, green, blue);
+                            return StatusError(StatusCode::INVALID_ARG)
+                                    << StringPrintf(
+                                            "Invalid color values: red: %d green: %d blue: %d", red,
+                                            green, blue);
+                        }
+
+                        softPwmWrite(RED_PIN, red);
+                        softPwmWrite(GREEN_PIN, green);
+                        softPwmWrite(BLUE_PIN, blue);
+
+                        return {};
+                    }
+
+                    VhalResult<void> GpioFakeVehicleHardware::setPwmAmbientLightColorToBatteryLevel(
+                            float batteryLevelPercent) {
+                        if (batteryLevelPercent < 0 || batteryLevelPercent > 100) {
+                            return StatusError(StatusCode::INVALID_ARG)
+                                    << StringPrintf("Invalid battery level percent: %f%%",
+                                                    batteryLevelPercent);
+                        }
+
+                        if (batteryLevelPercent > 20) {
+                            // green color
+                            ALOGD("Set ambient light color to battery level (green)");
+                            return setPwmAmbientLightColor(0, 255, 0);
+                        } else if (batteryLevelPercent > 10) {
+                            // orange color
+                            ALOGD("Set ambient light color to battery level (orange)");
+                            return setPwmAmbientLightColor(255, 255, 0);
+                        }
+                        // battery level <= 10% (critical) (red color)
+                        ALOGD("Set ambient light color to battery level (red)");
+                        return setPwmAmbientLightColor(255, 0, 0);
+                    }
+
+                    VhalResult<void> GpioFakeVehicleHardware::handleSetCustomAmbientLightColor(
+                            const VehiclePropValue &value) {
+                        int32_t propId = value.prop;
+                        auto currentAmbientLightModeResult = mServerSidePropStore->readValue(
+                                toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE));
+
+                        if (propId != toInt(VendorVehicleProperty::AMBIENT_LIGHT_COLOR)) {
+                            ALOGE("handleSetCustomAmbientLightColor: Invalid property ID: 0x%d, expected AMBIENT_LIGHT_COLOR", propId);
+                            return StatusError(StatusCode::INVALID_ARG)
+                                    << StringPrintf(
+                                            "Invalid property ID: 0x%d, expected AMBIENT_LIGHT_COLOR",
+                                            propId);
+                        }
+
+                        if (currentAmbientLightModeResult.ok()) {
+                            int32_t currentAmbientLightMode = currentAmbientLightModeResult.value()->value.int32Values[0];
+                            if (currentAmbientLightMode != toInt(AmbientLightMode::CUSTOM)) {
+                                ALOGE("handleSetCustomAmbientLightColor: Can't set custom ambient light color, if ambient light mode is not AmbientLightMode::CUSTOM");
+                                return StatusError(StatusCode::INVALID_ARG)
+                                        << "Can't set custom ambient light color, if ambient light mode is not AmbientLightMode::CUSTOM";
+                            }
+                        } else {
+                            ALOGE("Could not retrieve current ambient light mode");
+                        }
+
+                        if (value.value.int32Values.empty()) {
+                            ALOGE("handleSetCustomAmbientLightColor: No ambient light mode value provided");
+                            return StatusError(StatusCode::INVALID_ARG)
+                                    << "No ambient light mode value provided";
+                        }
+
+                        if (value.value.int32Values.size() != 3) {
+                            ALOGE("handleSetCustomAmbientLightColor: Expected 3 values for RGB color");
+                            return StatusError(StatusCode::INVALID_ARG)
+                                    << StringPrintf("Expected 3 values for RGB color");
+                        }
+
+                        int32_t redValue = value.value.int32Values[0];
+                        int32_t greenValue = value.value.int32Values[1];
+                        int32_t blueValue = value.value.int32Values[2];
+
+                        return setPwmAmbientLightColor(redValue, greenValue, blueValue);
+                    }
+
+                    VhalResult<float>
+                    GpioFakeVehicleHardware::calculateCurrentBatteryLevelPercent() {
+                        auto batteryCapacityResult =
+                                mServerSidePropStore->readValue(
+                                        toInt(VehicleProperty::EV_CURRENT_BATTERY_CAPACITY));
+                        auto currentBatteryLevelResult =
+                                mServerSidePropStore->readValue(
+                                        toInt(VehicleProperty::EV_BATTERY_LEVEL));
+
+                        if (!batteryCapacityResult.ok()) {
+                            ALOGE("calculateCurrentBatteryLevelPercent: Could not read battery capacity");
+                            return StatusError(StatusCode::INTERNAL_ERROR)
+                                    << "Could not retrieve EV_CURRENT_BATTERY_CAPACITY value";
+                        }
+
+                        if (!currentBatteryLevelResult.ok()) {
+                            ALOGE("calculateCurrentBatteryLevelPercent: Could not read battery level");
+                            return StatusError(StatusCode::INTERNAL_ERROR)
+                                    << "Could not retrieve EV_BATTERY_LEVEL value";
+                        }
+
+                        int32_t batteryCapacity = batteryCapacityResult.value()->value.floatValues[0];
+                        int32_t currentBatteryLevel = currentBatteryLevelResult.value()->value.floatValues[0];
+
+                        float batteryLevel = (currentBatteryLevel / batteryCapacity) * 100;
+                        ALOGD("calculateCurrentBatteryLevelPercent: Battery level is %f",
+                              batteryLevel);
+                        return batteryLevel;
+                    }
+
+                    GpioFakeVehicleHardware::PendingSetRequestHandler::PendingSetRequestHandler(
+                            GpioFakeVehicleHardware *hardware)
+                            : mHardware(hardware) {
+                        // waiting for incoming set requests
+                        mThread = std::thread([this] {
+                            while (mRequests.waitForItems()) {
+                                ALOGD("Got new setValue requests in queue");
+                                handleSetValueRequests();
+                            }
+                        });
+                    }
+
+
+                    void GpioFakeVehicleHardware::PendingSetRequestHandler::stop() {
+                        mRequests.deactivate();
+                        if (mThread.joinable()) {
+                            mThread.join();
+                        }
+                    }
+
+                    void
+                    GpioFakeVehicleHardware::PendingSetRequestHandler::handleSetValueRequests() {
+                        std::unordered_map<std::shared_ptr<const SetValuesCallback>, std::vector<SetValueResult>>
+                                callbackToResults;
+                        for (const auto &srwc: mRequests.flush()) {
+                            ATRACE_BEGIN("GpioFakeVehicleHardware:handleSetValueRequest");
+                            auto result = mHardware->handleSetValueRequest(srwc.request);
+                            ATRACE_END();
+                            callbackToResults[srwc.callback].push_back(std::move(result));
+                        }
+
+                        for (const auto &[callback, results]: callbackToResults) {
+                            // client in DefaultVehicleHal gets notified and clears pending requests by id
+                            ATRACE_BEGIN("FakeVehicleHardware:call set value result callback");
+                            (*callback)(std::move(results));
+                            ATRACE_END();
+                        }
+                    }
+
+                    void GpioFakeVehicleHardware::PendingSetRequestHandler::addRequest(
+                            aidl::android::hardware::automotive::vehicle::SetValueRequest request,
+                            std::shared_ptr<const SetValuesCallback> callback) {
+                        mRequests.push({request, callback});
                     }
                 }
             }

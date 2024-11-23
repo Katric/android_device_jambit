@@ -20,6 +20,7 @@ cc_defaults {
     ],
     defaults : [
         "FakeVehicleHardwareDefaults",
+        "VendorVehicleHalInterfaceDefaults",
     ],
     static_libs : [
         "FakeVehicleHardware",
