@@ -75,6 +75,19 @@ namespace android {
 
                     GpioFakeVehicleHardware::GpioFakeVehicleHardware()
                             : FakeVehicleHardware(), mPendingSetValueRequests(this) {
+                        // initialize current battery capacity to avoid calling it multiple times, as it's not going
+                        // to change in the demonstrator
+                        auto batteryCapacityResult =
+                                mServerSidePropStore->readValue(
+                                        toInt(VehicleProperty::EV_CURRENT_BATTERY_CAPACITY));
+                        if (batteryCapacityResult.ok()) {
+                            batteryCapacityWh = batteryCapacityResult.value()->value.floatValues[0];
+                        } else {
+                            batteryCapacityWh = 150000.0; // default value from FakeVehicleHardware
+                            ALOGE("Could not initialize battery capacity due to error: %s",
+                                  getErrorMsg(batteryCapacityResult).c_str());
+                        }
+
                         init();
                     }
 
@@ -119,17 +132,6 @@ namespace android {
 
                         // for rotary encoder
                         gGpioFakeVehicleHardware = this;
-
-                        // initialize current battery capacity to avoid calling it multiple times
-                        auto batteryCapacityResult =
-                                mServerSidePropStore->readValue(
-                                        toInt(VehicleProperty::EV_CURRENT_BATTERY_CAPACITY));
-                        if (batteryCapacityResult.ok()) {
-                            batteryCapacityWh = batteryCapacityResult.value()->value.floatValues[0];
-                        } else {
-                            ALOGE("Could not initialize battery capacity due to error: %s",
-                                  getErrorMsg(batteryCapacityResult).c_str());
-                        }
                     }
 
                     void GpioFakeVehicleHardware::initGpio() {
