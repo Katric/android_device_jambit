@@ -369,9 +369,11 @@ namespace android {
                         // increase or decrease by BATTERY_ROTARY_ENCODER_STEP %
                         if (clk == 1 && dt == 0) {
                             newBatteryLevelPercent =
-                                    std::min(currentBatteryLevelPercent + BATTERY_ROTARY_ENCODER_STEP, 100.0f);
+                                    std::min(currentBatteryLevelPercent +
+                                             BATTERY_ROTARY_ENCODER_STEP, 100.0f);
                         } else if (clk == 1 && dt == 1) {
-                            newBatteryLevelPercent = std::max(currentBatteryLevelPercent - BATTERY_ROTARY_ENCODER_STEP, 0.0f);
+                            newBatteryLevelPercent = std::max(
+                                    currentBatteryLevelPercent - BATTERY_ROTARY_ENCODER_STEP, 0.0f);
                         } else {
                             ALOGD("Ambiguous combination in ct/dt state. returning.");
                             return;
@@ -394,8 +396,19 @@ namespace android {
                                   getErrorMsg(updatedBatteryLevelWriteResult).c_str());
                         }
 
-                        // update ambient light color
-                        setPwmAmbientLightColorToBatteryLevel(newBatteryLevelPercent, true);
+                        // update ambient light color if color mode is battery change
+                        auto currentAmbientLightModeResult = mServerSidePropStore->readValue(
+                                toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE));
+                        if (currentAmbientLightModeResult.ok()) {
+                            int32_t currentAmbientLightMode = currentAmbientLightModeResult.value()->value.int32Values[0];
+                            if (currentAmbientLightMode == toInt(AmbientLightMode::BATTERY_LEVEL)) {
+                                ALOGI("setPwmAmbientLightColorToBatteryLevel: set ambient light to battery level");
+                                setAndStorePwmAmbientLightColorToBatteryLevel(
+                                        newBatteryLevelPercent);
+                            }
+                        } else {
+                            ALOGI("setPwmAmbientLightColorToBatteryLevel: did not set ambient light to battery level, because AmbientLightMode is not BATTERY_LEVEL");
+                        }
 
                         // check if fuel level low flag has changed and store new value if yes
                         bool wasFuelLevelLow = currentBatteryLevelPercent < LOW_BATTERY_TRESHHOLD;
@@ -495,7 +508,7 @@ namespace android {
                                 return StatusError(getErrorCode(batteryLevelResult))
                                         << getErrorMsg(batteryLevelResult);
                             }
-                            return setPwmAmbientLightColorToBatteryLevel(
+                            return setAndStorePwmAmbientLightColorToBatteryLevel(
                                     batteryLevelResult.value());
                         }
 
@@ -524,51 +537,36 @@ namespace android {
                         return {};
                     }
 
-                    VhalResult<void> GpioFakeVehicleHardware::setPwmAmbientLightColorToBatteryLevel(
-                            float_t batteryLevelPercent, bool storeValue) {
-                        auto currentAmbientLightModeResult = mServerSidePropStore->readValue(
-                                toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE));
-
-                        if (currentAmbientLightModeResult.ok()) {
-                            int32_t currentAmbientLightMode = currentAmbientLightModeResult.value()->value.int32Values[0];
-                            if (currentAmbientLightMode != toInt(AmbientLightMode::BATTERY_LEVEL)) {
-                                ALOGI("setPwmAmbientLightColorToBatteryLevel: Can't set custom ambient light color to battery level, if ambient light mode is not AmbientLightMode::BATTERY_LEVEL");
-                                return StatusError(StatusCode::INTERNAL_ERROR)
-                                        << "Can't set custom ambient light color to battery level, if ambient light mode is not AmbientLightMode::BATTERY_LEVEL";
-                            }
-                        } else {
-                            ALOGE("setPwmAmbientLightColorToBatteryLevel: Could not retrieve current ambient light mode");
-                            return StatusError(StatusCode::INTERNAL_ERROR)
-                                    << "Could not retrieve current ambient light mode";
-                        }
-
+                    VhalResult<void>
+                    GpioFakeVehicleHardware::setAndStorePwmAmbientLightColorToBatteryLevel(
+                            float_t batteryLevelPercent) {
                         if (batteryLevelPercent < 0 || batteryLevelPercent > 100) {
                             return StatusError(StatusCode::INVALID_ARG)
                                     << StringPrintf("Invalid battery level percent: %f%%",
                                                     batteryLevelPercent);
                         }
 
-                        std::vector<int32_t> batteryLevelColor = getBatteryLevelColor(batteryLevelPercent);
-                        auto setPwmColorResult = setPwmAmbientLightColor(batteryLevelColor[0], batteryLevelColor[1],
+                        std::vector<int32_t> batteryLevelColor = getBatteryLevelColor(
+                                batteryLevelPercent);
+                        auto setPwmColorResult = setPwmAmbientLightColor(batteryLevelColor[0],
+                                                                         batteryLevelColor[1],
                                                                          batteryLevelColor[2]);
                         if (!setPwmColorResult.ok()) {
                             return setPwmColorResult.error();
                         }
 
-                        if (storeValue) {
-                            auto batteryLevelColorValue = mValuePool->obtain(
-                                    VehiclePropertyType::INT32_VEC);
-                            batteryLevelColorValue->prop = toInt(
-                                    VendorVehicleProperty::AMBIENT_LIGHT_COLOR);
-                            batteryLevelColorValue->areaId = 0;
-                            batteryLevelColorValue->timestamp = elapsedRealtimeNano();
-                            batteryLevelColorValue->value.int32Values = batteryLevelColor;
-                            auto writeResult = mServerSidePropStore->writeValue(
-                                    std::move(batteryLevelColorValue));
+                        auto batteryLevelColorValue = mValuePool->obtain(
+                                VehiclePropertyType::INT32_VEC);
+                        batteryLevelColorValue->prop = toInt(
+                                VendorVehicleProperty::AMBIENT_LIGHT_COLOR);
+                        batteryLevelColorValue->areaId = 0;
+                        batteryLevelColorValue->timestamp = elapsedRealtimeNano();
+                        batteryLevelColorValue->value.int32Values = batteryLevelColor;
+                        auto writeResult = mServerSidePropStore->writeValue(
+                                std::move(batteryLevelColorValue));
 
-                            if (!writeResult.ok()) {
-                                return writeResult.error();
-                            }
+                        if (!writeResult.ok()) {
+                            return writeResult.error();
                         }
 
                         return {};

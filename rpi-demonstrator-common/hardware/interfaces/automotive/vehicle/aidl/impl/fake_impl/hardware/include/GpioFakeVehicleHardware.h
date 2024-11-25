@@ -73,7 +73,7 @@ namespace android {
 
                         std::vector<int32_t> getBatteryLevelColor(float_t batteryPercentage);
 
-                        VhalResult<void> setPwmAmbientLightColorToBatteryLevel(float_t batteryLevelPercent, bool storeValue = false);
+                        VhalResult<void> setAndStorePwmAmbientLightColorToBatteryLevel(float_t batteryLevelPercent);
 
                         VhalResult<void> setPwmAmbientLightColor(int32_t red, int32_t green, int32_t blue);
 
