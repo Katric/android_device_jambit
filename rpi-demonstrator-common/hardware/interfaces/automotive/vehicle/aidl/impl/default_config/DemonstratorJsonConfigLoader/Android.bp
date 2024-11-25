@@ -10,7 +10,6 @@ cc_library {
     ],
     static_libs: ["VehicleHalUtils", "VehicleHalJsonConfigLoader"],
     header_libs: [
-        "VehicleHalTestUtilHeaders",
         "IVehicleGeneratedHeaders",
     ],
     shared_libs: ["libjsoncpp"],
