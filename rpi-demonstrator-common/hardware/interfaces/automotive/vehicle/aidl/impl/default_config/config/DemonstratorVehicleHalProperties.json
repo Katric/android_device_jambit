@@ -90,7 +90,7 @@
             "property": "VendorVehicleProperty::AMBIENT_LIGHT_COLOR",
             "defaultValue": {
                 "int32Values": [
-                    0, 0, 255
+                    0, 255, 0
                 ]
             },
             "access": "VehiclePropertyAccess::READ_WRITE",

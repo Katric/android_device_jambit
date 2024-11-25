@@ -93,6 +93,18 @@ namespace android {
 
                     GpioFakeVehicleHardware::~GpioFakeVehicleHardware() {
                         mPendingSetValueRequests.stop();
+                        gGpioFakeVehicleHardware = nullptr;
+
+                        // reset GPIO
+                        softPwmWrite(FAN_PWM_PIN, 0);
+                        softPwmStop(FAN_PWM_PIN);
+                        softPwmWrite(RED_PIN, 0);
+                        softPwmStop(RED_PIN);
+                        softPwmWrite(GREEN_PIN, 0);
+                        softPwmStop(GREEN_PIN);
+                        softPwmWrite(BLUE_PIN, 0);
+                        softPwmStop(BLUE_PIN);
+                        pinMode(FAN_PWM_PIN, INPUT);
                     }
 
                     StatusCode GpioFakeVehicleHardware::setValues(
@@ -120,6 +132,17 @@ namespace android {
 
                         // for rotary encoder
                         gGpioFakeVehicleHardware = this;
+
+                        // initialize current battery capacity to avoid calling it multiple times
+                        auto batteryCapacityResult =
+                                mServerSidePropStore->readValue(
+                                        toInt(VehicleProperty::EV_CURRENT_BATTERY_CAPACITY));
+                        if (batteryCapacityResult.ok()) {
+                            batteryCapacityWh = batteryCapacityResult.value()->value.floatValues[0];
+                        } else {
+                            ALOGE("Could not initialize battery capacity due to error: %s",
+                                  getErrorMsg(batteryCapacityResult).c_str());
+                        }
                     }
 
                     void GpioFakeVehicleHardware::initGpio() {
@@ -141,6 +164,9 @@ namespace android {
                         // rotary encoder for battery level setting
                         pinMode(CLK_PIN, INPUT);
                         pinMode(DT_PIN, INPUT);
+                        // avoid floating state of pins, default is low (0)
+                        pullUpDnControl(CLK_PIN, PUD_DOWN);
+                        pullUpDnControl(DT_PIN, PUD_DOWN);
                         wiringPiISR(CLK_PIN, INT_EDGE_RISING, &globalBatteryChangeHandler);
                     }
 
@@ -317,7 +343,83 @@ namespace android {
                     }
 
                     void GpioFakeVehicleHardware::handleBatteryChange() {
+                        unsigned long interruptTime = millis();
 
+                        // state of clk and dt pin of rotary encoder
+                        int dt = digitalRead(DT_PIN);
+                        int clk = digitalRead(CLK_PIN);
+
+                        // debouncing to avoid counting bounces (false triggers shortly after rotation of the rotary encoder)
+                        if (interruptTime - mLastBatteryChangeInterruptTime <
+                            ROTARY_DEBOUNCE_TIME) {
+                            ALOGD("Skipped handling of rotary encoder change due to debounce time");
+                            mLastBatteryChangeInterruptTime = interruptTime;
+                            return;
+                        }
+
+                        auto currentBatteryLevelPercentResult = calculateCurrentBatteryLevelPercent();
+                        if (!currentBatteryLevelPercentResult.ok()) {
+                            ALOGE("Could not get current battery level in percent. Returning.");
+                            return;
+                        }
+
+                        float_t currentBatteryLevelPercent = currentBatteryLevelPercentResult.value();
+                        float_t newBatteryLevelPercent;
+                        // clockwise or counterclockwise
+                        // increase or decrease by BATTERY_ROTARY_ENCODER_STEP %
+                        if (clk == 1 && dt == 0) {
+                            newBatteryLevelPercent =
+                                    std::min(currentBatteryLevelPercent + BATTERY_ROTARY_ENCODER_STEP, 100.0f);
+                        } else if (clk == 1 && dt == 1) {
+                            newBatteryLevelPercent = std::max(currentBatteryLevelPercent - BATTERY_ROTARY_ENCODER_STEP, 0.0f);
+                        } else {
+                            ALOGD("Ambiguous combination in ct/dt state. returning.");
+                            return;
+                        }
+
+                        // calculate percentage of battery capacity
+                        float_t newBatteryLevel =
+                                (newBatteryLevelPercent / 100.0f) * batteryCapacityWh;
+                        // update current battery level property
+                        auto newBatteryLevelValue = mValuePool->obtain(
+                                VehiclePropertyType::FLOAT);
+                        newBatteryLevelValue->prop = toInt(VehicleProperty::EV_BATTERY_LEVEL);
+                        newBatteryLevelValue->areaId = 0;
+                        newBatteryLevelValue->timestamp = elapsedRealtimeNano();
+                        newBatteryLevelValue->value.floatValues = {newBatteryLevel};
+                        auto updatedBatteryLevelWriteResult = mServerSidePropStore->writeValue(
+                                std::move(newBatteryLevelValue));
+                        if (!updatedBatteryLevelWriteResult.ok()) {
+                            ALOGE("Could not write new battery level to property store. Error: %s",
+                                  getErrorMsg(updatedBatteryLevelWriteResult).c_str());
+                        }
+
+                        // update ambient light color
+                        setPwmAmbientLightColorToBatteryLevel(newBatteryLevelPercent, true);
+
+                        // check if fuel level low flag has changed and store new value if yes
+                        bool wasFuelLevelLow = currentBatteryLevelPercent < LOW_BATTERY_TRESHHOLD;
+                        bool isFuelLevelLow = newBatteryLevelPercent < LOW_BATTERY_TRESHHOLD;
+                        if (wasFuelLevelLow != isFuelLevelLow) {
+                            auto fuelLevelLowValue = mValuePool->obtain(
+                                    VehiclePropertyType::BOOLEAN);
+                            fuelLevelLowValue->prop = toInt(VehicleProperty::FUEL_LEVEL_LOW);
+                            fuelLevelLowValue->areaId = 0;
+                            fuelLevelLowValue->timestamp = elapsedRealtimeNano();
+                            fuelLevelLowValue->value.int32Values = {isFuelLevelLow};
+
+                            auto fuelLevelLowWriteResult = mServerSidePropStore->writeValue(
+                                    std::move(fuelLevelLowValue));
+                            if (fuelLevelLowWriteResult.ok()) {
+                                ALOGD("Fuel level low: %d", isFuelLevelLow);
+                            } else {
+                                ALOGE("Failed to write fuel level low warning: %s",
+                                      fuelLevelLowWriteResult.error().message().c_str());
+                            }
+                        }
+
+                        // reset time of last interrupt
+                        mLastBatteryChangeInterruptTime = interruptTime;
                     }
 
                     VhalResult<void>
@@ -423,25 +525,53 @@ namespace android {
                     }
 
                     VhalResult<void> GpioFakeVehicleHardware::setPwmAmbientLightColorToBatteryLevel(
-                            float batteryLevelPercent) {
+                            float_t batteryLevelPercent, bool storeValue) {
+                        auto currentAmbientLightModeResult = mServerSidePropStore->readValue(
+                                toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE));
+
+                        if (currentAmbientLightModeResult.ok()) {
+                            int32_t currentAmbientLightMode = currentAmbientLightModeResult.value()->value.int32Values[0];
+                            if (currentAmbientLightMode != toInt(AmbientLightMode::BATTERY_LEVEL)) {
+                                ALOGI("setPwmAmbientLightColorToBatteryLevel: Can't set custom ambient light color to battery level, if ambient light mode is not AmbientLightMode::BATTERY_LEVEL");
+                                return StatusError(StatusCode::INTERNAL_ERROR)
+                                        << "Can't set custom ambient light color to battery level, if ambient light mode is not AmbientLightMode::BATTERY_LEVEL";
+                            }
+                        } else {
+                            ALOGE("setPwmAmbientLightColorToBatteryLevel: Could not retrieve current ambient light mode");
+                            return StatusError(StatusCode::INTERNAL_ERROR)
+                                    << "Could not retrieve current ambient light mode";
+                        }
+
                         if (batteryLevelPercent < 0 || batteryLevelPercent > 100) {
                             return StatusError(StatusCode::INVALID_ARG)
                                     << StringPrintf("Invalid battery level percent: %f%%",
                                                     batteryLevelPercent);
                         }
 
-                        if (batteryLevelPercent > 20) {
-                            // green color
-                            ALOGD("Set ambient light color to battery level (green)");
-                            return setPwmAmbientLightColor(0, 255, 0);
-                        } else if (batteryLevelPercent > 10) {
-                            // orange color
-                            ALOGD("Set ambient light color to battery level (orange)");
-                            return setPwmAmbientLightColor(255, 255, 0);
+                        std::vector<int32_t> batteryLevelColor = getBatteryLevelColor(batteryLevelPercent);
+                        auto setPwmColorResult = setPwmAmbientLightColor(batteryLevelColor[0], batteryLevelColor[1],
+                                                                         batteryLevelColor[2]);
+                        if (!setPwmColorResult.ok()) {
+                            return setPwmColorResult.error();
                         }
-                        // battery level <= 10% (critical) (red color)
-                        ALOGD("Set ambient light color to battery level (red)");
-                        return setPwmAmbientLightColor(255, 0, 0);
+
+                        if (storeValue) {
+                            auto batteryLevelColorValue = mValuePool->obtain(
+                                    VehiclePropertyType::INT32_VEC);
+                            batteryLevelColorValue->prop = toInt(
+                                    VendorVehicleProperty::AMBIENT_LIGHT_COLOR);
+                            batteryLevelColorValue->areaId = 0;
+                            batteryLevelColorValue->timestamp = elapsedRealtimeNano();
+                            batteryLevelColorValue->value.int32Values = batteryLevelColor;
+                            auto writeResult = mServerSidePropStore->writeValue(
+                                    std::move(batteryLevelColorValue));
+
+                            if (!writeResult.ok()) {
+                                return writeResult.error();
+                            }
+                        }
+
+                        return {};
                     }
 
                     VhalResult<void> GpioFakeVehicleHardware::handleSetCustomAmbientLightColor(
@@ -451,7 +581,8 @@ namespace android {
                                 toInt(VendorVehicleProperty::AMBIENT_LIGHT_MODE));
 
                         if (propId != toInt(VendorVehicleProperty::AMBIENT_LIGHT_COLOR)) {
-                            ALOGE("handleSetCustomAmbientLightColor: Invalid property ID: 0x%d, expected AMBIENT_LIGHT_COLOR", propId);
+                            ALOGE("handleSetCustomAmbientLightColor: Invalid property ID: 0x%d, expected AMBIENT_LIGHT_COLOR",
+                                  propId);
                             return StatusError(StatusCode::INVALID_ARG)
                                     << StringPrintf(
                                             "Invalid property ID: 0x%d, expected AMBIENT_LIGHT_COLOR",
@@ -488,20 +619,11 @@ namespace android {
                         return setPwmAmbientLightColor(redValue, greenValue, blueValue);
                     }
 
-                    VhalResult<float>
+                    VhalResult<float_t>
                     GpioFakeVehicleHardware::calculateCurrentBatteryLevelPercent() {
-                        auto batteryCapacityResult =
-                                mServerSidePropStore->readValue(
-                                        toInt(VehicleProperty::EV_CURRENT_BATTERY_CAPACITY));
                         auto currentBatteryLevelResult =
                                 mServerSidePropStore->readValue(
                                         toInt(VehicleProperty::EV_BATTERY_LEVEL));
-
-                        if (!batteryCapacityResult.ok()) {
-                            ALOGE("calculateCurrentBatteryLevelPercent: Could not read battery capacity");
-                            return StatusError(StatusCode::INTERNAL_ERROR)
-                                    << "Could not retrieve EV_CURRENT_BATTERY_CAPACITY value";
-                        }
 
                         if (!currentBatteryLevelResult.ok()) {
                             ALOGE("calculateCurrentBatteryLevelPercent: Could not read battery level");
@@ -509,13 +631,26 @@ namespace android {
                                     << "Could not retrieve EV_BATTERY_LEVEL value";
                         }
 
-                        int32_t batteryCapacity = batteryCapacityResult.value()->value.floatValues[0];
-                        int32_t currentBatteryLevel = currentBatteryLevelResult.value()->value.floatValues[0];
+                        float_t currentBatteryLevel = currentBatteryLevelResult.value()->value.floatValues[0];
 
-                        float batteryLevel = (currentBatteryLevel / batteryCapacity) * 100;
+                        float_t batteryLevel = (currentBatteryLevel / batteryCapacityWh) * 100;
                         ALOGD("calculateCurrentBatteryLevelPercent: Battery level is %f",
                               batteryLevel);
                         return batteryLevel;
+                    }
+
+                    std::vector<int32_t>
+                    GpioFakeVehicleHardware::getBatteryLevelColor(float_t batteryPercentage) {
+                        const std::vector<int32_t> COLOR_GOOD = {0, 255, 0};    // Green
+                        const std::vector<int32_t> COLOR_WARN = {255, 255, 0};  // Yellow
+                        const std::vector<int32_t> COLOR_CRITICAL = {255, 0, 0};  // Red
+
+                        if (batteryPercentage > FUEL_WARNING_COLOR) {
+                            return COLOR_GOOD;
+                        } else if (batteryPercentage > FUEL_LOW_COLOR) {
+                            return COLOR_WARN;
+                        }
+                        return COLOR_CRITICAL;
                     }
 
                     GpioFakeVehicleHardware::PendingSetRequestHandler::PendingSetRequestHandler(

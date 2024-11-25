@@ -10,6 +10,13 @@
 #define GREEN_PIN 22
 #define BLUE_PIN 23
 
+#define FUEL_WARNING_COLOR 20 //%
+#define FUEL_LOW_COLOR 10 // %
+
+#define ROTARY_DEBOUNCE_TIME 5
+#define LOW_BATTERY_TRESHHOLD 20.0f // %
+#define BATTERY_ROTARY_ENCODER_STEP 2 //%
+
 #include <FakeVehicleHardware.h>
 #include <DemonstratorJsonConfigLoader.h>
 
@@ -36,6 +43,10 @@ namespace android {
                         // Only used during initialization.
                         DemonstratorJsonConfigLoader mConfigLoader;
 
+                        volatile long mLastBatteryChangeInterruptTime = 0;
+
+                        float_t batteryCapacityWh;
+
                         void init();
 
                         void initGpio();
@@ -60,11 +71,13 @@ namespace android {
 
                         VhalResult<void> handleSetCustomAmbientLightColor(const aidl::android::hardware::automotive::vehicle::VehiclePropValue &value);
 
-                        VhalResult<void> setPwmAmbientLightColorToBatteryLevel(float batteryLevelPercent);
+                        std::vector<int32_t> getBatteryLevelColor(float_t batteryPercentage);
+
+                        VhalResult<void> setPwmAmbientLightColorToBatteryLevel(float_t batteryLevelPercent, bool storeValue = false);
 
                         VhalResult<void> setPwmAmbientLightColor(int32_t red, int32_t green, int32_t blue);
 
-                        VhalResult<float> calculateCurrentBatteryLevelPercent();
+                        VhalResult<float_t> calculateCurrentBatteryLevelPercent();
 
                         VhalResult<void> setValue(
                                 const aidl::android::hardware::automotive::vehicle::VehiclePropValue &value);
