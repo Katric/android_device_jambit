@@ -4,21 +4,12 @@
 #include "GpioFakeVehicleHardware.h"
 #include "DemonstratorJsonConfigLoader.h"
 
-#include <FakeObd2Frame.h>
-#include <JsonFakeValueGenerator.h>
-#include <LinearFakeValueGenerator.h>
-#include <PropertyUtils.h>
-#include <TestPropertyUtils.h>
-#include <VehicleHalTypes.h>
-#include <VehicleUtils.h>
-
 #include <aidl/jambit/android/hardware/automotive/vehicle/AmbientLightMode.h>
 #include <aidl/jambit/android/hardware/automotive/vehicle/VendorVehicleProperty.h>
 
 #include <softPwm.h>
 #include <wiringPi.h>
 
-#include <android-base/file.h>
 #include <android-base/parsedouble.h>
 #include <android-base/properties.h>
 #include <android-base/strings.h>
@@ -28,11 +19,7 @@
 
 #include <dirent.h>
 #include <inttypes.h>
-#include <sys/types.h>
-#include <fstream>
 #include <regex>
-#include <unordered_set>
-#include <vector>
 
 namespace android {
     namespace hardware {
