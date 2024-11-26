@@ -21,4 +21,5 @@ PRODUCT_PACKAGES += \
 # Privileged permissions
 PRODUCT_COPY_FILES += \
     $(COMMON_PATH)/packages/Car/CarAOSPHost/permissions/com.android.car.templates.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/com.android.car.templates.host.xml \
-    $(COMMON_PATH)/packages/Jambilight/permissions/privapp-permissions-com.jambit.jambilight.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/privapp-permissions-com.jambit.jambilight.xml
+    $(COMMON_PATH)/packages/Jambilight/permissions/privapp-permissions-com.jambit.jambilight.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/privapp-permissions-com.jambit.jambilight.xml \
+    $(COMMON_PATH)/packages/services/Car/car_product/bootanimations/bootanimation.zip:system/media/bootanimation.zip
