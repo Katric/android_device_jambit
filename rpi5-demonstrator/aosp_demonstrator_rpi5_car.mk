@@ -1,3 +1,7 @@
+# override bootanimation
+PRODUCT_COPY_FILES += \
+	device/jambit/rpi-demonstrator-common/packages/services/Car/car_product/bootanimations/bootanimation.zip:system/media/bootanimation.zip
+
 # inherit aosp_rpi5_car config
 $(call inherit-product, device/brcm/rpi5/aosp_rpi5_car.mk)
 
