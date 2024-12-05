@@ -53,6 +53,10 @@
     <uses-permission android:name="android.car.permission.REGISTER_CAR_SYSTEM_UI_PROXY"/>
     <!-- use for ActivityBlockingActivity to tell whether it's on driver or passenger display -->
     <uses-permission android:name="android.car.permission.ACCESS_PRIVATE_DISPLAY_ID"/>
+    <!-- Permission for access to car battery info. -->
+    <uses-permission android:name="android.car.permission.CAR_ENERGY" />
+    <uses-permission android:name="android.car.permission.CAR_INFO" />
+    <uses-permission android:name="android.car.permission.CAR_ENERGY_PORTS" />
 
     <application
         tools:replace="android:name,android:appComponentFactory"

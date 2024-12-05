@@ -22,7 +22,7 @@ package {
 }
 
 android_test {
-    name: "CarSystemUITests",
+    name: "CarSystemUITestsCustom",
 
     dxflags: ["--multi-dex"],
     platform_apis: true,
@@ -30,7 +30,7 @@ android_test {
         "device-tests",
         "automotive-tests",
     ],
-    static_libs: ["CarSystemUI-tests"],
+    static_libs: ["CarSystemUICustom-tests"],
     compile_multilib: "both",
 
     jni_libs: [

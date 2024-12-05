@@ -22,6 +22,7 @@
     <string name="hvac_temperature_format_celsius" translatable="false">%.1f\u00B0</string>
     <!-- Tag to use to identify the icon view within the quick controls entry point button -->
     <string name="qc_icon_tag" translatable="false">TAG_QC_ICON</string>
+    <string name="qc_icon_text_tag" translatable="false">TAG_QC_ICON_TEXT</string>
     <!-- String to represent lowest setting of an HVAC system [CHAR LIMIT=10]-->
     <string name="hvac_min_text">Min</string>
     <!-- String to represent the highest setting of an HVAC system [CHAR LIMIT=10]-->
@@ -130,6 +131,9 @@
     <string name="system_bar_mic_privacy_chip">Mic Privacy Chip</string>
     <string name="system_bar_user_avatar">User Avatar</string>
     <string name="system_bar_user_name_text">User Name Text</string>
+    <string name="system_bar_brand_logo">Brand Logo</string>
+    <string name="system_bar_car_battery_status">Car Battery Status</string>
+    <string name="system_bar_car_range_status">Car Range Status</string>
 
     <!-- Adjust temperature view lower temperature label-->
     <string name="hvac_decrease_button_label">Lower temperature</string>

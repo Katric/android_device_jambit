@@ -24,6 +24,8 @@
         android:layout_width="@dimen/car_quick_controls_entry_points_icon_width"
         android:layout_height="match_parent"
         android:layout_gravity="center"
+        android:tint="@color/system_bar_icon_color_with_selection"
+        android:tintMode="src_in"
         android:tag="@string/qc_icon_tag"/>
 </FrameLayout>
 

@@ -56,6 +56,16 @@
     <dimen name="system_bar_user_icon_padding">8dp</dimen>
     <!-- User icon size -->
     <dimen name="system_bar_user_icon_drawing_size">36dp</dimen>
+    <dimen name="system_bar_username_text_size">26sp</dimen>
+
+    <!-- Car property status size -->
+    <dimen name="system_bar_car_property_status_drawing_size">36dp</dimen>
+    <dimen name="system_bar_car_property_status_spacing">12dp</dimen>
+    <dimen name="system_bar_car_range_remaining_text_size">20sp</dimen>
+    <dimen name="system_bar_car_battery_status_text_size">12sp</dimen>
+    <dimen name="system_bar_car_battery_status_width">40dp</dimen>
+    <dimen name="system_bar_car_battery_status_height">24dp</dimen>
+
     <!-- Padding on either side of the group of all system bar buttons -->
     <dimen name="system_bar_button_group_padding">64dp</dimen>
     <dimen name="system_bar_icon_drawing_size">44dp</dimen>
@@ -66,6 +76,9 @@
     <dimen name="system_bar_button_padding">16dp</dimen>
     <!-- Radius for system bar pill buttons -->
     <dimen name="system_bar_pill_radius">30dp</dimen>
+
+    <!-- Space between user icon and brand icon -->
+    <dimen name="system_bar_icons_spacing">32dp</dimen>
 
     <!-- The amount by which to scale up the status bar icons. -->
     <item name="status_bar_icon_scale_factor" format="float" type="dimen">1.75</item>
@@ -254,7 +267,7 @@
 
     <dimen name="car_quick_controls_icon_drawable_width">24dp</dimen>
     <dimen name="car_quick_controls_icon_drawable_height">24dp</dimen>
-
+    <!--  size of read only status icons  -->
     <dimen name="car_read_only_status_icon_width">36dp</dimen>
     <dimen name="car_read_only_status_icon_height">36dp</dimen>
 
@@ -288,7 +301,7 @@
 
     <dimen name="temperature_control_arrow_height">48dp</dimen>
 
-    <dimen name="temperature_bar_text_size">32sp</dimen>
+    <dimen name="temperature_bar_text_size">26sp</dimen>
     <dimen name="temperature_bar_floating_text_size">32sp</dimen>
     <dimen name="temperature_bar_off_text_size">22sp</dimen>
 

@@ -28,7 +28,6 @@
         android:id="@+id/hvac_decrease_button"
         android:layout_width="@dimen/hvac_temperature_button_size"
         android:layout_height="@dimen/hvac_temperature_button_size"
-        android:background="@drawable/system_bar_button_background"
         android:scaleType="center"
         android:src="@drawable/hvac_decrease_button"
         android:contentDescription="@string/hvac_decrease_button_label"/>
@@ -47,7 +46,6 @@
         android:id="@+id/hvac_increase_button"
         android:layout_width="@dimen/hvac_temperature_button_size"
         android:layout_height="@dimen/hvac_temperature_button_size"
-        android:background="@drawable/system_bar_button_background"
         android:scaleType="center"
         android:src="@drawable/hvac_increase_button"
         android:contentDescription="@string/hvac_increase_button_label"/>

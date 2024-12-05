@@ -40,8 +40,22 @@
 
     <style name="TextAppearance.SystemBar.Username"
            parent="@android:style/TextAppearance.DeviceDefault">
-        <item name="android:textSize">@dimen/car_body3_size</item>
+        <item name="android:textSize">@dimen/system_bar_username_text_size</item>
         <item name="android:textColor">@color/system_bar_text_color_with_selection</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="TextAppearance.SystemBar.CarRangeStatus"
+        parent="@android:style/TextAppearance.DeviceDefault">
+        <item name="android:textSize">@dimen/system_bar_car_range_remaining_text_size</item>
+        <item name="android:textColor">@color/system_bar_text_color</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="TextAppearance.SystemBar.CarBatteryStatus"
+        parent="@android:style/TextAppearance.DeviceDefault">
+        <item name="android:textSize">@dimen/system_bar_car_battery_status_text_size</item>
+        <item name="android:textColor">@color/system_bar_text_color</item>
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
@@ -63,7 +77,7 @@
         <item name="android:padding">@dimen/system_bar_button_padding</item>
         <item name="android:gravity">center</item>
         <item name="android:background">@drawable/system_bar_button_background</item>
-        <item name="unselectedAlpha">0.56</item>
+        <item name="unselectedAlpha">1.0</item>
     </style>
 
     <style name="QuickControlEntryPointButton">
@@ -71,7 +85,6 @@
         <item name="android:layout_marginBottom">@dimen/car_quick_controls_entry_points_button_margin_bottom</item>
         <item name="android:layout_marginStart">@dimen/car_quick_controls_entry_points_button_margin_start</item>
         <item name="android:layout_marginEnd">@dimen/car_quick_controls_entry_points_button_margin_end</item>
-        <item name="android:background">@drawable/status_icon_background</item>
     </style>
 
     <style name="HvacButton">
@@ -184,6 +197,17 @@
         <item name="android:padding">
             @dimen/car_quick_controls_panel_footer_button_view_padding
         </item>
+    </style>
+
+    <!-- Override QC container text appearance declared in
+         packages/apps/Car/systemlibs/car-qc-lib/res/values/styles.xml. -->
+    <style name="TextAppearance.QC.Title">
+        <item name="android:textSize">@dimen/car_ui_body1_size</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+    <style name="TextAppearance.QC.Subtitle">
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">@dimen/car_ui_body3_size</item>
     </style>
 
     <!-- UserPicker -->

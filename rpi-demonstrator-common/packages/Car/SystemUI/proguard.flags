@@ -10,4 +10,4 @@
 -keep class com.android.systemui.car.qc.ProfileSwitcher { *; }
 -keep class com.android.systemui.car.qc.DriveModeQcPanel { *; }
 
--include ../../../../frameworks/base/packages/SystemUI/proguard.flags
+-include ../../../../../../frameworks/base/packages/SystemUI/proguard.flags

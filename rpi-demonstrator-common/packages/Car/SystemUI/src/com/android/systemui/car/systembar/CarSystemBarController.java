@@ -42,6 +42,8 @@ import com.android.systemui.car.privacy.CameraPrivacyElementsProviderImpl;
 import com.android.systemui.car.privacy.MicPrivacyElementsProviderImpl;
 import com.android.systemui.car.qc.SystemUIQCViewController;
 import com.android.systemui.car.statusbar.UserNameViewController;
+import com.android.systemui.car.statusbar.CarBatteryStatusViewController;
+import com.android.systemui.car.statusbar.CarRangeStatusViewController;
 import com.android.systemui.car.statusicon.StatusIconPanelController;
 import com.android.systemui.car.users.CarSystemUIUserUtil;
 import com.android.systemui.dagger.SysUISingleton;
@@ -76,6 +78,8 @@ public class CarSystemBarController {
     private final Lazy<UserNameViewController> mUserNameViewControllerLazy;
     private final Lazy<MicPrivacyChipViewController> mMicPrivacyChipViewControllerLazy;
     private final Lazy<CameraPrivacyChipViewController> mCameraPrivacyChipViewControllerLazy;
+    private final CarBatteryStatusViewController mCarBatteryStatusViewController;
+    private final CarRangeStatusViewController mCarRangeStatusViewController;
     private final Lazy<MicPrivacyElementsProviderImpl> mMicPrivacyElementsProviderLazy;
     private final Lazy<CameraPrivacyElementsProviderImpl> mCameraPrivacyElementsProviderLazy;
 
@@ -133,7 +137,9 @@ public class CarSystemBarController {
             SystemBarConfigs systemBarConfigs,
             Provider<SystemUIQCViewController> qcViewControllerProvider,
             Lazy<MicPrivacyElementsProviderImpl> micPrivacyElementsProvider,
-            Lazy<CameraPrivacyElementsProviderImpl> cameraPrivacyElementsProvider) {
+            Lazy<CameraPrivacyElementsProviderImpl> cameraPrivacyElementsProvider,
+            CarBatteryStatusViewController carBatteryStatusViewController,
+            CarRangeStatusViewController carRangeStatusViewController) {
         mContext = context;
         mUserTracker = userTracker;
         mCarSystemBarViewFactory = carSystemBarViewFactory;
@@ -148,6 +154,9 @@ public class CarSystemBarController {
         mQCViewControllerProvider = qcViewControllerProvider;
         mMicPrivacyElementsProviderLazy = micPrivacyElementsProvider;
         mCameraPrivacyElementsProviderLazy = cameraPrivacyElementsProvider;
+
+        mCarBatteryStatusViewController = carBatteryStatusViewController;
+        mCarRangeStatusViewController = carRangeStatusViewController;
         mSystemBarConfigs = systemBarConfigs;
 
         // Read configuration.
@@ -200,6 +209,8 @@ public class CarSystemBarController {
         mUserNameViewControllerLazy.get().removeAll();
         mMicPrivacyChipViewControllerLazy.get().removeAll();
         mCameraPrivacyChipViewControllerLazy.get().removeAll();
+        mCarRangeStatusViewController.removeAll();
+        mCarBatteryStatusViewController.removeAll();
 
         if (mMicPanelController != null) {
             mMicPanelController.destroyPanel();
@@ -403,6 +414,9 @@ public class CarSystemBarController {
             mCameraPanelController = setupSensorQcPanel(mCameraPanelController,
                     R.id.camera_privacy_chip, R.layout.qc_camera_panel);
             setupProfilePanel();
+
+            mCarRangeStatusViewController.addRangeTextView(mTopView);
+            mCarBatteryStatusViewController.addBatteryStatusView(mTopView);
         }
 
         return mTopView;
@@ -742,6 +756,7 @@ public class CarSystemBarController {
     private boolean restoreFocus(@Nullable View rootView, @IdRes int viewToFocusId) {
         if (rootView == null || viewToFocusId == View.NO_ID) return false;
         View focusedView = rootView.findViewById(viewToFocusId);
+        if (focusedView == null) return false;
         if (focusedView == null) return false;
         focusedView.requestFocus();
         return true;
