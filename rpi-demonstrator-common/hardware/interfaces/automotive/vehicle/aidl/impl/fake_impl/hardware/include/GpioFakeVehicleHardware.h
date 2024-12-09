@@ -17,6 +17,8 @@
 #define LOW_BATTERY_TRESHHOLD 20.0f // %
 #define BATTERY_ROTARY_ENCODER_STEP 2 //%
 
+#define INITIAL_RANGE 400000.0f //m
+
 #include <FakeVehicleHardware.h>
 #include <DemonstratorJsonConfigLoader.h>
 
@@ -45,7 +47,7 @@ namespace android {
 
                         volatile long mLastBatteryChangeInterruptTime = 0;
 
-                        float_t batteryCapacityWh;
+                        float_t batteryCapacityWh = 150000.0;
 
                         void init();
 

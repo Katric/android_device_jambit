@@ -83,8 +83,7 @@ namespace android {
                         if (batteryCapacityResult.ok()) {
                             batteryCapacityWh = batteryCapacityResult.value()->value.floatValues[0];
                         } else {
-                            batteryCapacityWh = 150000.0; // default value from FakeVehicleHardware
-                            ALOGE("Could not initialize battery capacity due to error: %s",
+                            ALOGE("Could not initialize battery capacity due to error: %s. Using default battery capacity.",
                                   getErrorMsg(batteryCapacityResult).c_str());
                         }
 
@@ -357,10 +356,12 @@ namespace android {
                         // clockwise or counterclockwise
                         // increase or decrease by BATTERY_ROTARY_ENCODER_STEP %
                         if (clk == 1 && dt == 0) {
+                            ATRACE_BEGIN("Handle battery change increase");
                             newBatteryLevelPercent =
                                     std::min(currentBatteryLevelPercent +
                                              BATTERY_ROTARY_ENCODER_STEP, 100.0f);
                         } else if (clk == 1 && dt == 1) {
+                            ATRACE_BEGIN("Handle battery change decrease");
                             newBatteryLevelPercent = std::max(
                                     currentBatteryLevelPercent - BATTERY_ROTARY_ENCODER_STEP, 0.0f);
                         } else {
@@ -383,6 +384,22 @@ namespace android {
                         if (!updatedBatteryLevelWriteResult.ok()) {
                             ALOGE("Could not write new battery level to property store. Error: %s",
                                   getErrorMsg(updatedBatteryLevelWriteResult).c_str());
+                        }
+
+                        // calculate remaining range
+                        float_t newRangeRemaining =
+                                (newBatteryLevelPercent / 100.0f) * INITIAL_RANGE;
+                        auto newRangeRemainingValue = mValuePool->obtain(
+                                VehiclePropertyType::FLOAT);
+                        newRangeRemainingValue->prop = toInt(VehicleProperty::RANGE_REMAINING);
+                        newRangeRemainingValue->areaId = 0;
+                        newRangeRemainingValue->timestamp = elapsedRealtimeNano();
+                        newRangeRemainingValue->value.floatValues = {newRangeRemaining};
+                        auto updatedRangeRemainingWriteResult = mServerSidePropStore->writeValue(
+                                std::move(newRangeRemainingValue));
+                        if (!updatedRangeRemainingWriteResult.ok()) {
+                            ALOGE("Could not write new remaining range to property store. Error: %s",
+                                  getErrorMsg(updatedRangeRemainingWriteResult).c_str());
                         }
 
                         // update ambient light color if color mode is battery change
@@ -422,6 +439,7 @@ namespace android {
 
                         // reset time of last interrupt
                         mLastBatteryChangeInterruptTime = interruptTime;
+                        ATRACE_END();
                     }
 
                     VhalResult<void>
@@ -522,7 +540,6 @@ namespace android {
                         softPwmWrite(RED_PIN, red);
                         softPwmWrite(GREEN_PIN, green);
                         softPwmWrite(BLUE_PIN, blue);
-
                         return {};
                     }
 
@@ -620,6 +637,11 @@ namespace android {
 
                         float_t currentBatteryLevel = currentBatteryLevelResult.value()->value.floatValues[0];
 
+                        if (batteryCapacityWh == 0) {
+                            return StatusError(StatusCode::INTERNAL_ERROR)
+                                    << "Current battery capacity is 0";
+                        }
+
                         float_t batteryLevel = (currentBatteryLevel / batteryCapacityWh) * 100;
                         ALOGD("calculateCurrentBatteryLevelPercent: Battery level is %f",
                               batteryLevel);
@@ -673,7 +695,7 @@ namespace android {
 
                         for (const auto &[callback, results]: callbackToResults) {
                             // client in DefaultVehicleHal gets notified and clears pending requests by id
-                            ATRACE_BEGIN("FakeVehicleHardware:call set value result callback");
+                            ATRACE_BEGIN("GpioFakeVehicleHardware:call set value result callback");
                             (*callback)(std::move(results));
                             ATRACE_END();
                         }
