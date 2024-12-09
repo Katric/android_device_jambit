@@ -457,6 +457,7 @@ void JsonConfigParser::parseAccessChangeMode(
         *outPtr = static_cast<T>(result.value());
         return;
     }
+    errors->push_back("No " + fieldName + " specified for property: " + propStr);
     return;
 }
 
