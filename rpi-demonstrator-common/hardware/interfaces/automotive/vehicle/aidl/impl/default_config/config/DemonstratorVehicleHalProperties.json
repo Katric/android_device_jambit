@@ -117,6 +117,17 @@
                 "AmbientLightMode::BATTERY_LEVEL",
                 "AmbientLightMode::CUSTOM"
             ]
+        },
+        {
+            "property": "VehicleProperty::RANGE_REMAINING",
+            "defaultValue": {
+                "floatValues": [
+                    400000.0
+                ]
+            },
+            "comment": "units in meter",
+            "maxSampleRate": 2.0,
+            "minSampleRate": 1.0
         }
     ]
 }
