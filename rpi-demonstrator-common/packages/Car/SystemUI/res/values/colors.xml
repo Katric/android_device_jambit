@@ -134,10 +134,8 @@
     <color name="status_icon_highlighted_color">#FFFFFF</color>
     <!-- Color for status icon that is not highlighted. -->
     <color name="status_icon_not_highlighted_color">#8E8E8E</color>
-    <color name="status_icon_battery_fill_color">#D2D2D2</color>
-    <color name="status_icon_battery_low_fill_color">#D9D9D9</color>
     <color name="status_icon_battery_stroke_color">#8E8E8E</color>
-    <color name="status_icon_battery_zero_stroke_color">#D1131F</color>
+    <color name="status_icon_battery_red_stroke_color">#D1131F</color>
     <!-- Color for clock text -->
     <color name="system_bar_clock_text_color">#8E8E8E</color>
 
