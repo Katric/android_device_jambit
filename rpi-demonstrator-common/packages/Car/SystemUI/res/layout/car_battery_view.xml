@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_centerVertical="true">
+
+    <!-- Battery Icon -->
+    <ImageView
+        android:id="@+id/car_battery_status_image"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:gravity="center"
+        android:contentDescription="@string/system_bar_car_battery_status" />
+
+    <!-- Battery Percentage Text -->
+    <TextView
+        android:id="@+id/car_battery_status_text"
+        android:layout_width="@dimen/system_bar_car_battery_status_width"
+        android:layout_height="@dimen/system_bar_car_battery_status_height"
+        android:layout_centerVertical="true"
+        android:gravity="center"
+        android:singleLine="true"
+        android:textAppearance="@style/TextAppearance.SystemBar.CarBatteryStatus"
+        android:contentDescription="@string/system_bar_car_battery_status" />
+</RelativeLayout>
