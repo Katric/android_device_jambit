@@ -3,8 +3,13 @@
 
 #define PWM_RANGE 255
 #define FAN_PWM_PIN 0
+
+// combination of both pins define rotary encoder for determining rotation direction
 #define DT_PIN 2
 #define CLK_PIN 3
+// define rotary encoder pin number for switch (push button) https://pinout.xyz/pinout/wiringpi
+#define SW_PIN 4
+#define SW_DEBOUNCE_TIME 15 // debounce time after each push button click
 
 #define RED_PIN 21
 #define GREEN_PIN 22
@@ -36,6 +41,8 @@ namespace android {
 
                         void handleBatteryChange();
 
+                        void handleRotaryPushButtonClick();
+
                         aidl::android::hardware::automotive::vehicle::StatusCode setValues(
                                 std::shared_ptr<const SetValuesCallback> callback,
                                 const std::vector<aidl::android::hardware::automotive::vehicle::SetValueRequest> &
@@ -46,6 +53,8 @@ namespace android {
                         DemonstratorJsonConfigLoader mConfigLoader;
 
                         volatile long mLastBatteryChangeInterruptTime = 0;
+
+                        volatile long mLastPushButtonClickInterruptTime = 0;
 
                         float_t batteryCapacityWh = 150000.0;
 

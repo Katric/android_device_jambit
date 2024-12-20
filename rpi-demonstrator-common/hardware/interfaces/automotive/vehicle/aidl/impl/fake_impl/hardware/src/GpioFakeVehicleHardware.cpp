@@ -73,13 +73,20 @@ namespace android {
                         }
                     }
 
+                    /*
+                        Global wrapper function is required to be called from the C Library WiringPi (and processed further in C++).
+                    */
+                    void globalRotaryPushButtonClickHandler() {
+                        if (gGpioFakeVehicleHardware != nullptr) {
+                            gGpioFakeVehicleHardware->handleRotaryPushButtonClick();
+                        }
+                    }
+
                     GpioFakeVehicleHardware::GpioFakeVehicleHardware()
                             : FakeVehicleHardware(), mPendingSetValueRequests(this) {
                         // initialize current battery capacity to avoid calling it multiple times, as it's not going
                         // to change in the demonstrator
-                        auto batteryCapacityResult =
-                                mServerSidePropStore->readValue(
-                                        toInt(VehicleProperty::EV_CURRENT_BATTERY_CAPACITY));
+                        auto batteryCapacityResult = mServerSidePropStore->readValue(toInt(VehicleProperty::EV_CURRENT_BATTERY_CAPACITY));
                         if (batteryCapacityResult.ok()) {
                             batteryCapacityWh = batteryCapacityResult.value()->value.floatValues[0];
                         } else {
@@ -156,6 +163,11 @@ namespace android {
                         pullUpDnControl(CLK_PIN, PUD_DOWN);
                         pullUpDnControl(DT_PIN, PUD_DOWN);
                         wiringPiISR(CLK_PIN, INT_EDGE_RISING, &globalBatteryChangeHandler);
+
+                        pinMode(SW_PIN, INPUT); // set push button pin mode to input
+                        pullUpDnControl(SW_PIN, PUD_DOWN); // set default pin state to 0
+                        // wiringPiISR is a C function of WiringPi-Library
+                        wiringPiISR(SW_PIN, INT_EDGE_RISING, &globalRotaryPushButtonClickHandler); // define call of global handler function, when push button is clicked (on rising edge)
                     }
 
                     void GpioFakeVehicleHardware::loadPropConfigsFromDir(const std::string &dirPath,
@@ -328,6 +340,44 @@ namespace android {
                         }
 
                         return {};
+                    }
+
+                    void GpioFakeVehicleHardware::handleRotaryPushButtonClick() {
+                        // add debouncing for mechanical push button to avoid multiple calls
+                        unsigned long interruptTime = millis();
+
+                        if (interruptTime - mLastPushButtonClickInterruptTime < SW_DEBOUNCE_TIME) {
+                            return;
+                        }
+
+                        mLastPushButtonClickInterruptTime = millis();
+
+                        int32_t evChargePortConnected = 0;
+                        auto evChargePortConnectedResult = mServerSidePropStore->readValue(toInt(VehicleProperty::EV_CHARGE_PORT_CONNECTED));
+                        if (evChargePortConnectedResult.ok()) {
+                            evChargePortConnected = evChargePortConnectedResult.value()->value.int32Values[0]; // boolean is stored as int32 (https://source.android.com/docs/automotive/vhal/property-configuration)
+                        } else {
+                            ALOGE("Could not read currect ev charge port connected value: %s.",
+                                  getErrorMsg(evChargePortConnectedResult).c_str());
+                            return;
+                        } 
+
+                        int32_t newEvChargePortConnectedState = (evChargePortConnected == 0) ? 1 : 0;
+
+                        // write new result back 
+                        auto newEvChargePortConnectedValue = mValuePool->obtain(VehiclePropertyType::BOOLEAN); // get predefined boolean config template object from value pool
+                        // https://source.android.com/docs/automotive/vhal/vhal-interface#vehicle-prop
+                        newEvChargePortConnectedValue->prop = toInt(VehicleProperty::EV_CHARGE_PORT_CONNECTED); 
+                        newEvChargePortConnectedValue->areaId = 0; // global 
+                        newEvChargePortConnectedValue->timestamp = elapsedRealtimeNano();
+                        newEvChargePortConnectedValue->value.int32Values[0] = newEvChargePortConnectedState;
+
+                        // store new value in map
+                        auto newEvChargePortConnectedWriteResult = mServerSidePropStore->writeValue(std::move(newEvChargePortConnectedValue));
+                        if (!newEvChargePortConnectedWriteResult.ok()) {
+                            ALOGE("Could not write new charge port connected value to property store. Error: %s",
+                                  getErrorMsg(newEvChargePortConnectedWriteResult).c_str());
+                        }
                     }
 
                     void GpioFakeVehicleHardware::handleBatteryChange() {
