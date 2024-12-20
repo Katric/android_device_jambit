@@ -1,7 +1,7 @@
 prebuilt_etc {
-    name: "Prebuilt_VendorVehicleHalProperties_JSON",
+    name: "Prebuilt_DemonstratorVehicleHalProperties_JSON",
     filename_from_src: true,
-    src: "VendorVehicleHalProperties.json",
+    src: "DemonstratorVehicleHalProperties.json",
     sub_dir: "automotive/vhaloverride/",
     vendor: true,
 }

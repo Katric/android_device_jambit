@@ -23,7 +23,7 @@ enum VendorVehicleProperty {
     * @change_mode VehiclePropertyChangeMode.ON_CHANGE
     * @access VehiclePropertyAccess.READ_WRITE
     */
-    AMBIENT_LIGHT_COLOR = 0x4000 + VehiclePropertyGroup.VENDOR + VehicleArea.GLOBAL + VehiclePropertyType.INT32_VEC,
+    AMBIENT_LIGHT_COLOR = 0x6000 + VehiclePropertyGroup.VENDOR + VehicleArea.GLOBAL + VehiclePropertyType.INT32_VEC,
 
     /**
     * Ambient Light Mode state.
@@ -33,5 +33,5 @@ enum VendorVehicleProperty {
     * @change_mode VehiclePropertyChangeMode.ON_CHANGE
     * @access VehiclePropertyAccess.READ_WRITE
     */
-     AMBIENT_LIGHT_MODE = 0x4001 + VehiclePropertyGroup.VENDOR + VehicleArea.GLOBAL + VehiclePropertyType.INT32,
+     AMBIENT_LIGHT_MODE = 0x6001 + VehiclePropertyGroup.VENDOR + VehicleArea.GLOBAL + VehiclePropertyType.INT32,
 }

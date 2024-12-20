@@ -50,7 +50,7 @@
 //	Another way to increase the frequency is to reduce the range - however
 //	that reduces the overall output accuracy...
 
-#define	PULSE_TIME	100
+#define	PULSE_TIME	39
 
 static volatile int marks         [MAX_PINS] ;
 static volatile int range         [MAX_PINS] ;
@@ -91,11 +91,11 @@ static void *softPwmThread (void *arg)
 
     if (mark != 0)
       digitalWrite (pin, HIGH) ;
-    delayMicroseconds (mark * 100) ;
+    delayMicroseconds (mark * PULSE_TIME) ;
 
     if (space != 0)
       digitalWrite (pin, LOW) ;
-    delayMicroseconds (space * 100) ;
+    delayMicroseconds (space * PULSE_TIME) ;
   }
 
   return NULL ;
@@ -150,6 +150,7 @@ int softPwmCreate (int pin, int initialValue, int pwmRange)
   digitalWrite (pin, LOW) ;
   pinMode      (pin, OUTPUT) ;
 
+  stopFlag[pin] = 0;
   marks [pin] = initialValue ;
   range [pin] = pwmRange ;
 
