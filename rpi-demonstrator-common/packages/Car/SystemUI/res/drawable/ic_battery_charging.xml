@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <level-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:maxLevel="10" android:drawable="@drawable/ic_battery_charging_empty" />
-    <item android:maxLevel="35" android:drawable="@drawable/ic_battery_charging_low" />
-    <item android:maxLevel="75" android:drawable="@drawable/ic_battery_charging_medium" />
-    <item android:maxLevel="100" android:drawable="@drawable/ic_battery_charging_high" />
+    <item android:maxLevel="0" android:drawable="@drawable/ic_battery_0_charging" />
+    <item android:maxLevel="10" android:drawable="@drawable/ic_battery_10_charging" />
+    <item android:maxLevel="20" android:drawable="@drawable/ic_battery_20_charging" />
+    <item android:maxLevel="30" android:drawable="@drawable/ic_battery_30_charging" />
+    <item android:maxLevel="40" android:drawable="@drawable/ic_battery_40_charging" />
+    <item android:maxLevel="50" android:drawable="@drawable/ic_battery_50_charging" />
+    <item android:maxLevel="60" android:drawable="@drawable/ic_battery_60_charging" />
+    <item android:maxLevel="70" android:drawable="@drawable/ic_battery_70_charging" />
+    <item android:maxLevel="80" android:drawable="@drawable/ic_battery_80_charging" />
+    <item android:maxLevel="90" android:drawable="@drawable/ic_battery_90_charging" />
+    <item android:maxLevel="100" android:drawable="@drawable/ic_battery_100_charging" />
 </level-list>

@@ -63,7 +63,7 @@
     <dimen name="system_bar_car_property_status_spacing">12dp</dimen>
     <dimen name="system_bar_car_range_remaining_text_size">20sp</dimen>
     <dimen name="system_bar_car_battery_status_text_size">12sp</dimen>
-    <dimen name="system_bar_car_battery_status_width">40dp</dimen>
+    <dimen name="system_bar_car_battery_status_width">44dp</dimen>
     <dimen name="system_bar_car_battery_status_height">24dp</dimen>
 
     <!-- Padding on either side of the group of all system bar buttons -->
