@@ -342,7 +342,7 @@ namespace android {
                         return {};
                     }
 
-                    void handleRotaryPushButtonClick() {
+                    void GpioFakeVehicleHardware::handleRotaryPushButtonClick() {
                         // add debouncing for mechanical push button to avoid multiple calls
                         unsigned long interruptTime = millis();
 
